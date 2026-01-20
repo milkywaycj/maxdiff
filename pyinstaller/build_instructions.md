@@ -35,6 +35,11 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 pip install pyinstaller
 ```
+Optional HB:
+```bat
+pip install -r requirements-hb.txt
+```
+
 ### 3) Build the EXE (exact command used)
 
 If the Python file is in src/:
