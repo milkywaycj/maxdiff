@@ -1,9 +1,1305 @@
-<!doctype html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MaxDiff Design Tool</title></head>
-<body style="font-family: system-ui; padding: 24px;">
-  <h1>MaxDiff Design Tool</h1>
-  <p>Coming soon.</p>
-  <p><a href="../">← Back to maxdiff home</a></p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MaxDiff Design Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8;
+            color: #1e293b;
+            line-height: 1.5;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 320px;
+            min-width: 320px;
+            background: white;
+            border-right: 1px solid #e2e8f0;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .sidebar h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #1e40af;
+        }
+
+        .section-header {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-top: 16px;
+            margin-bottom: 6px;
+            color: #374151;
+        }
+
+        .input-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 4px;
+        }
+
+        .input-row input[type="number"],
+        .input-row select {
+            width: 80px;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            background: white;
+        }
+
+        .input-row input[type="number"]:focus,
+        .input-row select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .input-hint {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        .badge {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: #dcfce7;
+            color: #16a34a;
+            font-weight: 500;
+        }
+
+        .badge.warning {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .labels-preview {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-top: 4px;
+            margin-bottom: 12px;
+        }
+
+        .questions-display {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #1e40af;
+        }
+
+        .calc-info {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-left: 8px;
+        }
+
+        /* Buttons */
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #2563eb;
+        }
+
+        .btn-primary.ready {
+            background: #22c55e;
+        }
+
+        .btn-primary.ready:hover:not(:disabled) {
+            background: #16a34a;
+        }
+
+        .btn-primary.pending {
+            background: #f59e0b;
+        }
+
+        .btn-primary.pending:hover:not(:disabled) {
+            background: #d97706;
+        }
+
+        .btn-primary:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #f9fafb;
+        }
+
+        .btn-secondary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            padding: 8px 12px;
+            font-weight: 500;
+        }
+
+        .btn-outline:hover {
+            background: #f9fafb;
+        }
+
+        /* Change indicator */
+        .change-indicator {
+            font-size: 0.8rem;
+            margin-bottom: 10px;
+            min-height: 20px;
+        }
+
+        .change-indicator.pending {
+            color: #f59e0b;
+        }
+
+        .change-indicator.ready {
+            color: #22c55e;
+        }
+
+        .status-label {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        /* Collapsible */
+        .collapsible {
+            background: #f8fafc;
+            border-radius: 8px;
+            margin-top: 16px;
+            overflow: hidden;
+        }
+
+        .collapsible-header {
+            padding: 12px 16px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            user-select: none;
+        }
+
+        .collapsible-header:hover {
+            background: #f1f5f9;
+        }
+
+        .collapsible-content {
+            padding: 0 16px 16px;
+            display: none;
+        }
+
+        .collapsible-content.open {
+            display: block;
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .checkbox-row input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+        }
+
+        .checkbox-row label {
+            font-size: 0.8rem;
+        }
+
+        /* Main content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .content-header h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .summary-label {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+
+        /* Table container */
+        .table-container {
+            flex: 1;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .table-wrapper {
+            flex: 1;
+            overflow: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th {
+            background: #f1f5f9;
+            color: #1e293b;
+            font-weight: 600;
+            padding: 12px 16px;
+            text-align: center;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        td {
+            padding: 10px 16px;
+            text-align: center;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        tr:nth-child(even) {
+            background: #f8fafc;
+        }
+
+        tr:hover {
+            background: #dbeafe;
+        }
+
+        .table-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            font-size: 0.8rem;
+        }
+
+        .balance-ok {
+            color: #16a34a;
+        }
+
+        .balance-warn {
+            color: #d97706;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .modal-header h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+
+        .modal-header p {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .label-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .label-row span {
+            width: 60px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .label-row input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.875rem;
+        }
+
+        .label-row input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .modal-footer .btn {
+            width: auto;
+            padding: 10px 20px;
+        }
+
+        /* Empty state */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #9ca3af;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state p {
+            font-size: 1rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .app-container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                min-width: 100%;
+                max-height: 50vh;
+                border-right: none;
+                border-bottom: 1px solid #e2e8f0;
+            }
+
+            .main-content {
+                min-height: 50vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <h1>MaxDiff Design Generator</h1>
+
+            <!-- Number of Items -->
+            <div class="section-header">Number of Items</div>
+            <div class="input-row">
+                <input type="number" id="nItems" value="10" min="4" max="50">
+                <span class="input-hint">items (4-50)</span>
+            </div>
+
+            <!-- Edit Labels Button -->
+            <button class="btn btn-outline" style="margin-top: 10px; width: 100%;" onclick="openLabelEditor()">
+                ✏️ Edit Item Labels
+            </button>
+            <div class="labels-preview" id="labelsPreview">Labels: 1, 2, 3, 4, 5, 6, ... (10 total)</div>
+
+            <!-- Repeats per Item -->
+            <div class="section-header">Repeats per Item</div>
+            <div class="input-row">
+                <select id="repeats">
+                    <option value="3" selected>3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                </select>
+                <span class="badge" id="repeatsBadge">✓ Recommended</span>
+            </div>
+            <div class="input-hint" id="repeatsInfo">Each item appears exactly 3 times per version.</div>
+
+            <!-- Items per Question -->
+            <div class="section-header">Items per Question</div>
+            <div class="input-row">
+                <select id="itemsPerQuestion">
+                    <option value="5">5</option>
+                </select>
+                <span class="input-hint">per question</span>
+            </div>
+
+            <!-- Number of Questions -->
+            <div class="section-header">Number of Questions</div>
+            <div class="input-row">
+                <span class="questions-display" id="questionsDisplay">6</span>
+                <span class="calc-info" id="calcInfo">(10 × 3 = 30 ÷ 5 = 6)</span>
+            </div>
+
+            <!-- Number of Versions -->
+            <div class="section-header">Number of Versions</div>
+            <div class="input-row">
+                <input type="number" id="nVersions" value="100" min="1" max="1000">
+                <span class="input-hint">versions (default: 100)</span>
+            </div>
+
+            <!-- Advanced Options -->
+            <div class="collapsible">
+                <div class="collapsible-header" onclick="toggleCollapsible(this)">
+                    <span id="advancedArrow">▶</span> Advanced Options
+                </div>
+                <div class="collapsible-content" id="advancedContent">
+                    <div class="checkbox-row">
+                        <input type="checkbox" id="useSeed" onchange="toggleSeedInput()">
+                        <label for="useSeed">Use fixed seed (reproducibility)</label>
+                    </div>
+                    <div class="input-row">
+                        <span class="input-hint">Seed:</span>
+                        <input type="number" id="seedValue" value="12345" disabled>
+                    </div>
+                    <div class="input-row" style="margin-top: 12px;">
+                        <span class="input-hint">Table font size:</span>
+                        <select id="fontSize" onchange="updateTableFont()">
+                            <option value="10">10</option>
+                            <option value="11">11</option>
+                            <option value="12" selected>12</option>
+                            <option value="13">13</option>
+                            <option value="14">14</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Change Indicator -->
+            <div class="change-indicator" id="changeIndicator"></div>
+
+            <!-- Buttons -->
+            <button class="btn btn-primary" id="generateBtn" onclick="generateDesign()">
+                ⚡ Generate Design
+            </button>
+            <button class="btn btn-secondary" id="downloadBtn" onclick="downloadCSV()" disabled>
+                💾 Download CSV
+            </button>
+
+            <div class="status-label" id="statusLabel"></div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-header">
+                <h2>Design Preview</h2>
+                <span class="summary-label" id="summaryLabel">Configure parameters and click Generate</span>
+            </div>
+
+            <div class="table-container">
+                <div class="table-wrapper" id="tableWrapper">
+                    <div class="empty-state" id="emptyState">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <p>Configure parameters and click Generate</p>
+                    </div>
+                    <table id="designTable" style="display: none;">
+                        <thead id="tableHead"></thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+                <div class="table-footer">
+                    <span id="rowCountLabel"></span>
+                    <span id="balanceLabel"></span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Label Editor Modal -->
+    <div class="modal-overlay" id="labelModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Edit Item Labels</h3>
+                <p>These labels will appear in the exported design.</p>
+            </div>
+            <div class="modal-body" id="labelEditorBody"></div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="resetLabelsToNumbers()">Reset to Numbers</button>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-outline" onclick="closeLabelEditor()">Cancel</button>
+                    <button class="btn btn-primary" onclick="applyLabels()">Apply</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== State ====================
+        let itemLabels = [];
+        let currentDesign = null;
+        let designData = [];
+        let hasGenerated = false;
+        let hasPendingChanges = false;
+        let lastGeneratedSettings = {};
+
+        // Initialize labels
+        for (let i = 1; i <= 10; i++) {
+            itemLabels.push(String(i));
+        }
+
+        // ==================== MaxDiff Design Class ====================
+        class MaxDiffDesign {
+            constructor(nItems, itemsPerQuestion, nQuestions, nVersions, repeatsPerItem, itemLabels, seed) {
+                this.nItems = nItems;
+                this.itemsPerQuestion = itemsPerQuestion;
+                this.nQuestions = nQuestions;
+                this.nVersions = nVersions;
+                this.repeatsPerItem = repeatsPerItem;
+                this.itemLabels = [...itemLabels];
+                this.seed = seed;
+                this.designs = {};
+
+                if (seed !== null) {
+                    this.rng = this.seededRandom(seed);
+                } else {
+                    this.rng = Math.random;
+                }
+
+                this.generateAllDesigns();
+            }
+
+            seededRandom(seed) {
+                return function() {
+                    seed = (seed * 9301 + 49297) % 233280;
+                    return seed / 233280;
+                };
+            }
+
+            shuffle(array) {
+                const arr = [...array];
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(this.rng() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                return arr;
+            }
+
+            generateAllDesigns() {
+                for (let v = 1; v <= this.nVersions; v++) {
+                    this.designs[v] = this.fastGenerateBalancedDesign();
+                }
+            }
+
+            fastGenerateBalancedDesign() {
+                const maxAttempts = 100;
+
+                for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                    let pool = [];
+                    for (let i = 0; i < this.nItems; i++) {
+                        for (let r = 0; r < this.repeatsPerItem; r++) {
+                            pool.push(i);
+                        }
+                    }
+                    pool = this.shuffle(pool);
+
+                    const design = [];
+                    let idx = 0;
+                    for (let q = 0; q < this.nQuestions; q++) {
+                        const row = [];
+                        for (let p = 0; p < this.itemsPerQuestion; p++) {
+                            row.push(pool[idx++]);
+                        }
+                        design.push(row);
+                    }
+
+                    if (this.isValidDesign(design)) {
+                        return design;
+                    }
+                }
+
+                return this.generateWithSwaps();
+            }
+
+            isValidDesign(design) {
+                for (let q = 0; q < design.length; q++) {
+                    const unique = new Set(design[q]);
+                    if (unique.size !== this.itemsPerQuestion) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            generateWithSwaps() {
+                let pool = [];
+                for (let i = 0; i < this.nItems; i++) {
+                    for (let r = 0; r < this.repeatsPerItem; r++) {
+                        pool.push(i);
+                    }
+                }
+                pool = this.shuffle(pool);
+
+                const design = [];
+                for (let q = 0; q < this.nQuestions; q++) {
+                    design.push(new Array(this.itemsPerQuestion).fill(0));
+                }
+
+                let poolIdx = 0;
+                for (let q = 0; q < this.nQuestions; q++) {
+                    const usedInQuestion = new Set();
+                    let positionsFilled = 0;
+
+                    while (positionsFilled < this.itemsPerQuestion && poolIdx < pool.length) {
+                        const item = pool[poolIdx];
+                        if (!usedInQuestion.has(item)) {
+                            design[q][positionsFilled] = item;
+                            usedInQuestion.add(item);
+                            positionsFilled++;
+                            pool.splice(poolIdx, 1);
+                        } else {
+                            poolIdx++;
+                        }
+                    }
+                    poolIdx = 0;
+
+                    while (positionsFilled < this.itemsPerQuestion && pool.length > 0) {
+                        const item = pool.shift();
+                        design[q][positionsFilled] = item;
+                        positionsFilled++;
+                    }
+                }
+
+                this.repairWithSwaps(design);
+                return design;
+            }
+
+            repairWithSwaps(design) {
+                const maxIterations = 500;
+
+                for (let iter = 0; iter < maxIterations; iter++) {
+                    if (this.isValidDesign(design)) break;
+
+                    for (let q = 0; q < this.nQuestions; q++) {
+                        const counts = {};
+                        for (const item of design[q]) {
+                            counts[item] = (counts[item] || 0) + 1;
+                        }
+
+                        const uniqueCount = Object.keys(counts).length;
+                        if (uniqueCount < this.itemsPerQuestion) {
+                            let dupItem = null;
+                            let dupPos = -1;
+
+                            for (const [item, count] of Object.entries(counts)) {
+                                if (count > 1) {
+                                    dupItem = parseInt(item);
+                                    dupPos = design[q].lastIndexOf(dupItem);
+                                    break;
+                                }
+                            }
+
+                            let swapped = false;
+                            for (let q2 = 0; q2 < this.nQuestions && !swapped; q2++) {
+                                if (q2 === q) continue;
+
+                                for (let p2 = 0; p2 < this.itemsPerQuestion && !swapped; p2++) {
+                                    const swapItem = design[q2][p2];
+                                    if (swapItem !== dupItem &&
+                                        !design[q].includes(swapItem) &&
+                                        !design[q2].includes(dupItem)) {
+                                        design[q][dupPos] = swapItem;
+                                        design[q2][p2] = dupItem;
+                                        swapped = true;
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+
+            updateLabels(newLabels) {
+                this.itemLabels = [...newLabels];
+            }
+
+            getDesignTable(useLabels = true) {
+                const rows = [];
+                const tableRng = this.seed !== null ? 
+                    this.seededRandom(this.seed + 10000) : Math.random;
+
+                const shuffleWithRng = (array, rng) => {
+                    const arr = [...array];
+                    for (let i = arr.length - 1; i > 0; i--) {
+                        const j = Math.floor(rng() * (i + 1));
+                        [arr[i], arr[j]] = [arr[j], arr[i]];
+                    }
+                    return arr;
+                };
+
+                for (let v = 1; v <= this.nVersions; v++) {
+                    const design = this.designs[v].map(row => shuffleWithRng([...row], tableRng));
+
+                    for (let q = 0; q < this.nQuestions; q++) {
+                        const row = {
+                            Version: v,
+                            Question: q + 1
+                        };
+                        for (let p = 0; p < this.itemsPerQuestion; p++) {
+                            const itemIdx = design[q][p];
+                            row[`Option ${p + 1}`] = useLabels ? 
+                                this.itemLabels[itemIdx] : (itemIdx + 1);
+                        }
+                        rows.push(row);
+                    }
+                }
+
+                return rows;
+            }
+
+            verifyBalance() {
+                for (let v = 1; v <= this.nVersions; v++) {
+                    const design = this.designs[v];
+                    const counts = new Array(this.nItems).fill(0);
+
+                    for (const row of design) {
+                        for (const item of row) {
+                            counts[item]++;
+                        }
+                    }
+
+                    for (let i = 0; i < this.nItems; i++) {
+                        if (counts[i] !== this.repeatsPerItem) {
+                            return false;
+                        }
+                    }
+
+                    if (!this.isValidDesign(design)) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
+
+        // ==================== UI Functions ====================
+        function toggleCollapsible(header) {
+            const content = document.getElementById('advancedContent');
+            const arrow = document.getElementById('advancedArrow');
+            content.classList.toggle('open');
+            arrow.textContent = content.classList.contains('open') ? '▼' : '▶';
+        }
+
+        function toggleSeedInput() {
+            const useSeed = document.getElementById('useSeed').checked;
+            document.getElementById('seedValue').disabled = !useSeed;
+            checkForChanges();
+        }
+
+        function updateTableFont() {
+            const fontSize = document.getElementById('fontSize').value;
+            const table = document.getElementById('designTable');
+            table.style.fontSize = fontSize + 'px';
+        }
+
+        function getCurrentSettings() {
+            return {
+                nItems: parseInt(document.getElementById('nItems').value),
+                repeats: parseInt(document.getElementById('repeats').value),
+                itemsPerQuestion: parseInt(document.getElementById('itemsPerQuestion').value),
+                nVersions: parseInt(document.getElementById('nVersions').value),
+                useSeed: document.getElementById('useSeed').checked,
+                seed: document.getElementById('useSeed').checked ? 
+                    document.getElementById('seedValue').value : null
+            };
+        }
+
+        function checkForChanges() {
+            if (!hasGenerated) {
+                updateButtonState();
+                return;
+            }
+
+            const current = getCurrentSettings();
+            hasPendingChanges = JSON.stringify(current) !== JSON.stringify(lastGeneratedSettings);
+            updateButtonState();
+        }
+
+        function updateButtonState() {
+            const btn = document.getElementById('generateBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const indicator = document.getElementById('changeIndicator');
+            const validOptions = getValidItemsPerQuestion();
+
+            if (validOptions.length === 0) {
+                btn.textContent = '⚠️ Invalid Configuration';
+                btn.className = 'btn btn-primary';
+                btn.disabled = true;
+                downloadBtn.disabled = true;
+                indicator.textContent = 'Adjust settings to find valid options';
+                indicator.className = 'change-indicator';
+                return;
+            }
+
+            btn.disabled = false;
+
+            if (!hasGenerated) {
+                btn.textContent = '⚡ Generate Design';
+                btn.className = 'btn btn-primary';
+                downloadBtn.disabled = true;
+                indicator.textContent = '';
+            } else if (hasPendingChanges) {
+                btn.textContent = '🔄 Update Design';
+                btn.className = 'btn btn-primary pending';
+                downloadBtn.disabled = true;
+                indicator.textContent = '⚠️ Settings changed - click Update to apply';
+                indicator.className = 'change-indicator pending';
+            } else {
+                btn.textContent = '✓ Design Ready';
+                btn.className = 'btn btn-primary ready';
+                downloadBtn.disabled = false;
+                indicator.textContent = '✓ Design matches current settings';
+                indicator.className = 'change-indicator ready';
+            }
+        }
+
+        function getValidItemsPerQuestion() {
+            const nItems = parseInt(document.getElementById('nItems').value);
+            const repeats = parseInt(document.getElementById('repeats').value);
+            const totalDisplays = nItems * repeats;
+
+            const validOptions = [];
+            const maxIpq = Math.min(8, nItems);
+
+            for (let ipq = 3; ipq <= maxIpq; ipq++) {
+                if (totalDisplays % ipq === 0) {
+                    const nQuestions = totalDisplays / ipq;
+                    if (nQuestions >= 2) {
+                        validOptions.push(ipq);
+                    }
+                }
+            }
+
+            return validOptions;
+        }
+
+        function updateValidOptions() {
+            const validOptions = getValidItemsPerQuestion();
+            const select = document.getElementById('itemsPerQuestion');
+            const currentValue = parseInt(select.value);
+
+            select.innerHTML = '';
+
+            if (validOptions.length === 0) {
+                const option = document.createElement('option');
+                option.value = '--';
+                option.textContent = '--';
+                select.appendChild(option);
+                document.getElementById('questionsDisplay').textContent = '--';
+                document.getElementById('calcInfo').textContent = '⚠️ No valid config';
+                updateButtonState();
+                return;
+            }
+
+            validOptions.forEach(val => {
+                const option = document.createElement('option');
+                option.value = val;
+                option.textContent = val;
+                select.appendChild(option);
+            });
+
+            if (validOptions.includes(currentValue)) {
+                select.value = currentValue;
+            } else {
+                select.value = validOptions[0];
+            }
+
+            updateQuestionsDisplay();
+            updateButtonState();
+            updateLabelsPreview();
+        }
+
+        function updateQuestionsDisplay() {
+            const nItems = parseInt(document.getElementById('nItems').value);
+            const repeats = parseInt(document.getElementById('repeats').value);
+            const ipq = parseInt(document.getElementById('itemsPerQuestion').value);
+
+            if (isNaN(ipq)) return;
+
+            const totalDisplays = nItems * repeats;
+            const nQuestions = totalDisplays / ipq;
+
+            document.getElementById('questionsDisplay').textContent = nQuestions;
+            document.getElementById('calcInfo').textContent = 
+                `(${nItems} × ${repeats} = ${totalDisplays} ÷ ${ipq} = ${nQuestions})`;
+
+            const badge = document.getElementById('repeatsBadge');
+            if (repeats === 3) {
+                badge.textContent = '✓ Recommended';
+                badge.className = 'badge';
+            } else {
+                badge.textContent = '';
+            }
+
+            document.getElementById('repeatsInfo').textContent = 
+                `Each item appears exactly ${repeats} time${repeats > 1 ? 's' : ''} per version.`;
+        }
+
+        function updateLabelsPreview() {
+            const nItems = parseInt(document.getElementById('nItems').value);
+
+            // Extend labels if needed
+            while (itemLabels.length < nItems) {
+                itemLabels.push(String(itemLabels.length + 1));
+            }
+            itemLabels = itemLabels.slice(0, nItems);
+
+            let preview;
+            if (nItems <= 6) {
+                preview = itemLabels.join(', ');
+            } else {
+                preview = itemLabels.slice(0, 5).join(', ') + `, ... (${nItems} total)`;
+            }
+
+            document.getElementById('labelsPreview').textContent = `Labels: ${preview}`;
+        }
+
+        function onItemsChanged() {
+            let nItems = parseInt(document.getElementById('nItems').value);
+            nItems = Math.max(4, Math.min(50, nItems || 10));
+            document.getElementById('nItems').value = nItems;
+
+            updateValidOptions();
+            checkForChanges();
+        }
+
+        function onRepeatsChanged() {
+            updateValidOptions();
+            checkForChanges();
+        }
+
+        function onIpqChanged() {
+            updateQuestionsDisplay();
+            checkForChanges();
+        }
+
+        // ==================== Label Editor ====================
+        function openLabelEditor() {
+            const nItems = parseInt(document.getElementById('nItems').value);
+
+            // Ensure labels array is correct size
+            while (itemLabels.length < nItems) {
+                itemLabels.push(String(itemLabels.length + 1));
+            }
+            itemLabels = itemLabels.slice(0, nItems);
+
+            const body = document.getElementById('labelEditorBody');
+            body.innerHTML = '';
+
+            for (let i = 0; i < nItems; i++) {
+                const row = document.createElement('div');
+                row.className = 'label-row';
+                row.innerHTML = `
+                    <span>Item ${i + 1}</span>
+                    <input type="text" id="label_${i}" value="${itemLabels[i]}" placeholder="Label for item ${i + 1}">
+                `;
+                body.appendChild(row);
+            }
+
+            document.getElementById('labelModal').classList.add('open');
+        }
+
+        function closeLabelEditor() {
+            document.getElementById('labelModal').classList.remove('open');
+        }
+
+        function resetLabelsToNumbers() {
+            const nItems = parseInt(document.getElementById('nItems').value);
+            for (let i = 0; i < nItems; i++) {
+                document.getElementById(`label_${i}`).value = String(i + 1);
+            }
+        }
+
+        function applyLabels() {
+            const nItems = parseInt(document.getElementById('nItems').value);
+            const newLabels = [];
+
+            for (let i = 0; i < nItems; i++) {
+                const input = document.getElementById(`label_${i}`);
+                const text = input.value.trim();
+                newLabels.push(text || String(i + 1));
+            }
+
+            itemLabels = newLabels;
+            updateLabelsPreview();
+
+            // Update existing design if labels match
+            if (currentDesign && hasGenerated && newLabels.length === currentDesign.nItems) {
+                currentDesign.updateLabels(newLabels);
+                designData = currentDesign.getDesignTable(true);
+                renderTable();
+                document.getElementById('statusLabel').textContent = '✓ Labels updated';
+            }
+
+            closeLabelEditor();
+        }
+
+        // ==================== Generate Design ====================
+        function generateDesign() {
+            const btn = document.getElementById('generateBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const statusLabel = document.getElementById('statusLabel');
+            const indicator = document.getElementById('changeIndicator');
+
+            btn.disabled = true;
+            downloadBtn.disabled = true;
+            statusLabel.textContent = '⏳ Generating...';
+            indicator.textContent = '';
+
+            // Use setTimeout to allow UI to update
+            setTimeout(() => {
+                try {
+                    const startTime = performance.now();
+
+                    const nItems = parseInt(document.getElementById('nItems').value);
+                    const repeats = parseInt(document.getElementById('repeats').value);
+                    const ipq = parseInt(document.getElementById('itemsPerQuestion').value);
+                    const nVersions = parseInt(document.getElementById('nVersions').value);
+                    const totalDisplays = nItems * repeats;
+                    const nQuestions = totalDisplays / ipq;
+
+                    let seed = null;
+                    if (document.getElementById('useSeed').checked) {
+                        seed = parseInt(document.getElementById('seedValue').value) || 12345;
+                    }
+
+                    // Ensure labels are correct
+                    while (itemLabels.length < nItems) {
+                        itemLabels.push(String(itemLabels.length + 1));
+                    }
+                    const labels = itemLabels.slice(0, nItems);
+
+                    currentDesign = new MaxDiffDesign(
+                        nItems, ipq, nQuestions, nVersions, repeats, labels, seed
+                    );
+
+                    designData = currentDesign.getDesignTable(true);
+                    const isBalanced = currentDesign.verifyBalance();
+                    const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
+
+                    lastGeneratedSettings = getCurrentSettings();
+                    hasGenerated = true;
+                    hasPendingChanges = false;
+
+                    renderTable();
+                    updateSummary(nItems, ipq, nQuestions, nVersions, repeats, isBalanced);
+
+                    const seedText = seed !== null ? ` • seed: ${seed}` : '';
+                    statusLabel.textContent = `Generated in ${elapsed}s${seedText}`;
+
+                    updateButtonState();
+                } catch (e) {
+                    document.getElementById('statusLabel').textContent = `❌ ${e.message}`;
+                    hasGenerated = false;
+                    updateButtonState();
+                }
+            }, 50);
+        }
+
+        function renderTable() {
+            const table = document.getElementById('designTable');
+            const thead = document.getElementById('tableHead');
+            const tbody = document.getElementById('tableBody');
+            const emptyState = document.getElementById('emptyState');
+
+            if (designData.length === 0) {
+                table.style.display = 'none';
+                emptyState.style.display = 'flex';
+                return;
+            }
+
+            table.style.display = 'table';
+            emptyState.style.display = 'none';
+
+            // Headers
+            const columns = Object.keys(designData[0]);
+            thead.innerHTML = '<tr>' + columns.map(col => `<th>${col}</th>`).join('') + '</tr>';
+
+            // Body
+            tbody.innerHTML = designData.map((row, idx) => {
+                const cells = columns.map(col => `<td>${row[col]}</td>`).join('');
+                return `<tr>${cells}</tr>`;
+            }).join('');
+
+            document.getElementById('rowCountLabel').textContent = `${designData.length.toLocaleString()} rows`;
+        }
+
+        function updateSummary(nItems, ipq, nQuestions, nVersions, repeats, isBalanced) {
+            document.getElementById('summaryLabel').textContent = 
+                `${nItems} items  •  ${ipq}/question  •  ${nQuestions} questions  •  ${nVersions} versions`;
+
+            const balanceLabel = document.getElementById('balanceLabel');
+            if (isBalanced) {
+                balanceLabel.textContent = `✓ Perfectly balanced (${repeats}× per item)`;
+                balanceLabel.className = 'balance-ok';
+            } else {
+                balanceLabel.textContent = '⚠️ Balance issue';
+                balanceLabel.className = 'balance-warn';
+            }
+        }
+
+        // ==================== Download CSV ====================
+        function downloadCSV() {
+            if (designData.length === 0) {
+                alert('Please generate a design first.');
+                return;
+            }
+
+            if (hasPendingChanges) {
+                if (!confirm('Settings have changed since this design was generated.\n\nDownload current design anyway?')) {
+                    return;
+                }
+            }
+
+            const columns = Object.keys(designData[0]);
+            const csvContent = [
+                columns.join(','),
+                ...designData.map(row => columns.map(col => {
+                    const val = String(row[col]);
+                    // Escape quotes and wrap in quotes if contains comma
+                    if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+                        return '"' + val.replace(/"/g, '""') + '"';
+                    }
+                    return val;
+                }).join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'maxdiff_design.csv';
+            link.click();
+
+            document.getElementById('statusLabel').textContent = '✓ Downloaded!';
+        }
+
+        // ==================== Event Listeners ====================
+        document.getElementById('nItems').addEventListener('change', onItemsChanged);
+        document.getElementById('nItems').addEventListener('blur', onItemsChanged);
+        document.getElementById('repeats').addEventListener('change', onRepeatsChanged);
+        document.getElementById('itemsPerQuestion').addEventListener('change', onIpqChanged);
+        document.getElementById('nVersions').addEventListener('change', checkForChanges);
+        document.getElementById('nVersions').addEventListener('blur', checkForChanges);
+        document.getElementById('seedValue').addEventListener('change', checkForChanges);
+        document.getElementById('seedValue').addEventListener('blur', checkForChanges);
+
+        // Close modal on overlay click
+        document.getElementById('labelModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeLabelEditor();
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeLabelEditor();
+            }
+        });
+
+        // ==================== Initialize ====================
+        updateValidOptions();
+        updateLabelsPreview();
+    </script>
 </body>
 </html>
