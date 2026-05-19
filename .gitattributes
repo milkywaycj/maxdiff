@@ -1,0 +1,51 @@
+# Normalize line endings in the repository to LF, with platform-specific
+# exceptions for files that must retain Windows line endings to function.
+#
+# * text=auto handles binary detection on files we haven't enumerated.
+
+* text=auto eol=lf
+
+# Source files (canonical LF)
+*.py        text eol=lf
+*.html      text eol=lf
+*.css       text eol=lf
+*.js        text eol=lf
+*.mjs       text eol=lf
+*.cjs       text eol=lf
+*.ts        text eol=lf
+*.json      text eol=lf
+*.md        text eol=lf
+*.txt       text eol=lf
+*.toml      text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.sh        text eol=lf
+*.cfg       text eol=lf
+*.ini       text eol=lf
+*.gitignore text eol=lf
+*.gitattributes text eol=lf
+
+# Windows batch files MUST retain CRLF or cmd.exe misbehaves.
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.ps1       text eol=crlf
+
+# Binary assets - never normalize, never diff as text.
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.pdf       binary
+*.zip       binary
+*.gz        binary
+*.tar       binary
+*.wasm      binary
+*.whl       binary
+*.exe       binary
+*.dll       binary
+*.so        binary
+*.dylib     binary
+*.woff      binary
+*.woff2     binary
+*.ttf       binary
