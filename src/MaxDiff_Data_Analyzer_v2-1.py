@@ -6,16 +6,12 @@
 # pipeline, file I/O, and the customtkinter GUI.
 
 import queue
-import textwrap
 import threading
 from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, ttk
 
 import customtkinter as ctk
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
-import seaborn as sns
 
 from maxdiff import (
     HAS_NUMPYRO,
@@ -31,207 +27,18 @@ from maxdiff import (
     process_color_input,
     read_tabular_file,
 )
+from maxdiff.plotting import (
+    plot_correlation_matrix,
+    plot_display_balance,
+    plot_observed_percentages,
+    plot_scores,
+    save_dataframe,
+    save_plot,
+)
 
 # Set appearance mode and color theme
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
-
-
-def plot_display_balance(stats_df, title="Item Display Frequency", output_terms=("Best", "Worst")):
-    """Create a visualization of display balance"""
-    pos_label, neg_label = output_terms
-
-    stats_sorted = stats_df.sort_values("Times Displayed", ascending=True)
-
-    fig, axes = plt.subplots(1, 2, figsize=(14, max(6, len(stats_df) * 0.3)))
-
-    # Left plot: Display counts
-    ax1 = axes[0]
-    mean_val = stats_df["Times Displayed"].mean()
-    colors = ["#4CAF50" if x >= mean_val else "#FF9800" for x in stats_sorted["Times Displayed"]]
-
-    y_pos = range(len(stats_sorted))
-    ax1.barh(y_pos, stats_sorted["Times Displayed"], color=colors, edgecolor="white")
-
-    ax1.set_yticks(y_pos)
-    ax1.set_yticklabels([str(x)[:30] for x in stats_sorted["Item"]], fontsize=9)
-    ax1.set_xlabel("Times Displayed")
-    ax1.set_title("Display Frequency per Item")
-
-    ax1.axvline(x=mean_val, color="red", linestyle="--", linewidth=2, label=f"Mean: {mean_val:.0f}")
-    ax1.legend(loc="lower right")
-
-    for i, (idx, row) in enumerate(stats_sorted.iterrows()):
-        ax1.text(
-            row["Times Displayed"] + 0.5, i, f"{row['Times Displayed']:,}", va="center", fontsize=8
-        )
-
-    # Right plot: Selection rates
-    ax2 = axes[1]
-
-    bar_height = 0.35
-    y_pos = np.arange(len(stats_sorted))
-
-    ax2.barh(
-        y_pos - bar_height / 2,
-        stats_sorted["Best Rate"] * 100,
-        bar_height,
-        label=f"% {pos_label}",
-        color="#FFC000",
-    )
-    ax2.barh(
-        y_pos + bar_height / 2,
-        stats_sorted["Worst Rate"] * 100,
-        bar_height,
-        label=f"% {neg_label}",
-        color="#5B9BD5",
-    )
-
-    ax2.set_yticks(y_pos)
-    ax2.set_yticklabels([str(x)[:30] for x in stats_sorted["Item"]], fontsize=9)
-    ax2.set_xlabel("Selection Rate (%)")
-    ax2.set_title("Selection Rates per Item")
-    ax2.legend(loc="lower right")
-    ax2.set_xlim(0, 100)
-
-    plt.suptitle(title, fontsize=14, fontweight="bold")
-    plt.tight_layout()
-
-    return fig
-
-
-def plot_observed_percentages(df, title, output_terms):
-    pos_label, neg_label = output_terms
-    pos_col = f"% Selected as {pos_label}"
-    neg_col = f"% Selected as {neg_label}"
-    df = df.sort_values("Score", ascending=True)
-    fig, ax = plt.subplots(figsize=(12, max(4, len(df) * 0.4)))
-    y_pos = range(len(df))
-    ax.barh(y_pos, df[pos_col], color="#FFC000", label=pos_col)
-    ax.barh(y_pos, df["% Unselected"], left=df[pos_col], color="#D9D9D9", label="% Unselected")
-    ax.barh(
-        y_pos, df[neg_col], left=df[pos_col] + df["% Unselected"], color="#5B9BD5", label=neg_col
-    )
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels(df["Item"], fontsize=8)
-    ax.set_title(title)
-    ax.legend(loc="lower right", bbox_to_anchor=(1, -0.1), ncol=3)
-
-    for i, (pos, unsel, neg) in enumerate(zip(df[pos_col], df["% Unselected"], df[neg_col])):
-        if pos > 5:
-            ax.text(pos / 2, i, f"{pos:.0f}%", va="center", ha="center", fontsize=8)
-        if unsel > 5:
-            ax.text(pos + unsel / 2, i, f"{unsel:.0f}%", va="center", ha="center", fontsize=8)
-        if neg > 5:
-            ax.text(100 - neg / 2, i, f"{neg:.0f}%", va="center", ha="center", fontsize=8)
-
-    plt.tight_layout()
-    return fig
-
-
-def plot_scores(
-    results,
-    positive_color,
-    negative_color,
-    error_bar_color,
-    zero_line_color,
-    anchor_item_color,
-    anchor_item_error_color,
-    title="MaxDiff Scores",
-    sample_size=None,
-    segment_info=None,
-    anchor_item=None,
-    include_ci=True,
-):
-    sorted_results = results.sort_values("Score", ascending=True).reset_index(drop=True)
-    num_items = len(sorted_results)
-    fig, ax = plt.subplots(figsize=(13, max(0.4 * num_items, 10)), dpi=100)
-    wrapped_labels = [textwrap.fill(str(label), width=50) for label in sorted_results["Item"]]
-    has_ci = (
-        include_ci
-        and "Negative Error" in sorted_results.columns
-        and "Positive Error" in sorted_results.columns
-    )
-
-    for i, row in sorted_results.iterrows():
-        item = row["Item"]
-        score = row["Score"]
-
-        if item == anchor_item:
-            point_color, error_color = anchor_item_color, anchor_item_error_color
-        else:
-            point_color = positive_color if score >= 0 else negative_color
-            error_color = error_bar_color
-
-        if has_ci:
-            neg_err = row["Negative Error"]
-            pos_err = row["Positive Error"]
-            ax.errorbar(
-                score,
-                i,
-                xerr=[[neg_err], [pos_err]],
-                fmt="o",
-                capsize=5,
-                capthick=2,
-                color=point_color,
-                markersize=8,
-                ecolor=error_color,
-                elinewidth=2,
-            )
-        else:
-            ax.plot(score, i, "o", color=point_color, markersize=8)
-
-    if segment_info:
-        title += f", {segment_info}"
-    if sample_size:
-        title += f" (n={sample_size})"
-
-    ax.set_title(title, fontsize=16, pad=20)
-    ax.set_xlabel("Score", fontsize=12)
-    ax.set_yticks(range(len(sorted_results)))
-    ax.set_yticklabels(wrapped_labels, fontsize=11)
-    ax.grid(True, axis="x", linestyle="--", alpha=0.7)
-    ax.axvline(x=0, color=zero_line_color, linestyle="--", alpha=0.5)
-    plt.tight_layout()
-    return fig
-
-
-def plot_correlation_matrix(corr_matrix, title):
-    fig, ax = plt.subplots(figsize=(12, 10))
-    sns.heatmap(
-        corr_matrix,
-        ax=ax,
-        cmap="coolwarm",
-        vmin=-1,
-        vmax=1,
-        center=0,
-        square=True,
-        linewidths=0.5,
-        cbar_kws={"shrink": 0.5},
-    )
-    plt.xticks(rotation=45, ha="right")
-    plt.yticks(rotation=0)
-    plt.title(title, fontsize=16)
-    plt.tight_layout()
-    return fig
-
-
-def save_plot(fig, filename, base_dir):
-    for ext in ["png", "pdf"]:
-        filepath = base_dir / "plots" / ext / f"{filename}.{ext}"
-        filepath.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(filepath, dpi=300 if ext == "png" else None, bbox_inches="tight")
-    plt.close(fig)
-
-
-def save_dataframe(df, filename, base_dir, include_index=False):
-    for ext in ["csv", "xlsx"]:
-        filepath = base_dir / "data" / ext / f"{filename}.{ext}"
-        filepath.parent.mkdir(parents=True, exist_ok=True)
-        if ext == "csv":
-            df.to_csv(filepath, index=include_index)
-        else:
-            df.to_excel(filepath, index=include_index)
 
 
 def save_results(
@@ -240,7 +47,7 @@ def save_results(
     prefix="",
     sample_size=None,
     positive_color="#F4B400",
-    negative_color="#F4B400",
+    negative_color="#5B9BD5",
     error_bar_color="#a1a1a1",
     zero_line_color="red",
     anchor_item_color="#a1a1a1",
@@ -1186,7 +993,11 @@ Use "Browse" to auto-detect format and convert if needed."""
         self.color_buttons = []
         color_configs = [
             ("Positive Points:", "#f4b400"),
-            ("Negative Points:", "#f4b400"),
+            # A distinct default for negative points so the chart visibly
+            # differentiates positive and negative scores out of the box.
+            # Pre-Phase-6 both defaulted to #f4b400, making the negative
+            # control invisible. Users can still pick the same color.
+            ("Negative Points:", "#5b9bd5"),
             ("Error Bars:", "#a1a1a1"),
             ("Zero Line:", "#ff0000"),
             ("Anchor Point:", "#a1a1a1"),
