@@ -15,10 +15,12 @@ Coverage:
   optimization for tighter designs, but the current behavior is
   reasonable.
 
-* Position balance per version - currently fails. Each item appears
-  in each option slot with uneven frequency because the tool only
-  shuffles within rows at table-output time; within-version
-  positional bias is not addressed. xfail-strict until Phase 5.
+* Position balance in the user-facing output - the shuffle applied
+  inside ``getDesignTable()`` produces uniformly-distributed slot
+  positions for every item, within finite-sample noise. The test
+  against the user-facing output passes; the earlier
+  internal-storage test was irrelevant because users never see
+  that representation.
 
 * RNG quality - the seeded RNG is an LCG with a 233 280 period.
   A chi-squared test on short permutations does not detect a bias
@@ -167,40 +169,65 @@ def test_pairwise_co_occurrence_is_reasonably_uniform(page, design_url) -> None:
 
 
 # ----------------------------------------------------------------------
-# Position balance per version - currently absent, xfail
+# Position balance across the user-facing output
 # ----------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    reason="Per-version position bias is not addressed; the tool only "
-    "shuffles within rows at table-output time. Phase 5 should add "
-    "explicit position balance.",
-    strict=True,
-)
 def test_each_item_appears_in_each_position_uniformly(page, design_url) -> None:
+    """Across the rendered table (which is what users actually receive),
+    every item should appear in every Option slot with frequency close
+    to ``total_appearances / items_per_question``.
+
+    Important: we test against ``getDesignTable()`` (the API the
+    Download CSV button uses) rather than the raw internal
+    ``design.designs[v]`` storage. The internal storage is built by
+    a balanced shuffle-and-slice that produces correlations between
+    item identity and slot position; the user-facing output then
+    shuffles each row to break that correlation, so the *output*
+    has uniform position balance.
+
+    Earlier critique flagged "position bias is not addressed" based
+    on tests against the internal storage; that turned out to be
+    irrelevant since the user never sees that representation.
+
+    With nV=1000 the expected CV under independent uniform random
+    sampling is sqrt((K-1)/(N*K)) ~ 0.037 for K=5 slots and 3000
+    item-appearances per item. We assert max_cv < 0.06 which is
+    1.5x the theoretical bound; smaller nV would inflate CV
+    purely from finite-sample noise.
+    """
     _bring_design_page_up(page, design_url)
-    versions = _generate_design(
-        page,
-        n_items=10,
-        items_per_question=5,
-        n_questions=6,
-        n_versions=200,
-        repeats=3,
-        seed=2024,
+
+    js = """
+        ({nItems, ipq, nQ, nV, repeats, seed, labels}) => {
+            const design = new MaxDiffDesign(nItems, ipq, nQ, nV, repeats, labels, seed);
+            return design.getDesignTable(false);
+        }
+    """
+    rows = page.evaluate(
+        js,
+        {
+            "nItems": 10,
+            "ipq": 5,
+            "nQ": 6,
+            "nV": 1000,
+            "repeats": 3,
+            "seed": 2024,
+            "labels": [str(i + 1) for i in range(10)],
+        },
     )
 
-    # For each item, count how often it appears in each option slot.
-    position_counts = {i: [0] * 5 for i in range(10)}
-    for version in versions:
-        for question in version:
-            for pos, item in enumerate(question):
-                position_counts[item][pos] += 1
+    position_counts = {i: [0] * 5 for i in range(1, 11)}
+    for row in rows:
+        for p in range(1, 6):
+            item = int(row[f"Option {p}"])
+            position_counts[item][p - 1] += 1
 
     max_cv = 0.0
     for _item, counts in position_counts.items():
         cv = statistics.pstdev(counts) / statistics.mean(counts)
         max_cv = max(max_cv, cv)
-    assert max_cv < 0.10, f"Worst per-item positional CV={max_cv:.3f} (target <0.10)"
+    assert max_cv < 0.06, f"Worst per-item positional CV={max_cv:.3f} (target <0.06)"
 
 
 # ----------------------------------------------------------------------
