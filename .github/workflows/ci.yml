@@ -66,7 +66,7 @@ jobs:
           # open a Tk display on CI runners (would hang on Linux).
           MPLBACKEND: Agg
         run: |
-          pytest --cov --cov-report=xml --cov-report=term
+          pytest --cov --cov-report=xml --cov-report=term --junitxml=junit-${{ matrix.os }}-py${{ matrix.python-version }}.xml -v --tb=short
 
       - name: Upload coverage artifact
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
@@ -74,4 +74,14 @@ jobs:
         with:
           name: coverage-xml
           path: coverage.xml
+          if-no-files-found: warn
+
+      - name: Upload JUnit test results
+        # Always upload, including on failure, so failures are
+        # diagnosable without log access.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: junit-${{ matrix.os }}-py${{ matrix.python-version }}.xml
           if-no-files-found: warn
