@@ -102,6 +102,13 @@ filterwarnings = [
     # JAX may emit a DeprecationWarning about jax.config.update on some
     # versions when we set the platform name to CPU. Supported but warns.
     "ignore:.*jax.config.*:DeprecationWarning",
+
+    # Matplotlib emits "Glyph N missing from current font" as a
+    # UserWarning when the default font lacks a code point that's
+    # neither in our labels nor anywhere we control. Most commonly
+    # triggered by automatic title-rendering paths under concurrent
+    # worker-thread invocation. Cosmetic; not a behavior bug.
+    "ignore:Glyph .* missing from current font:UserWarning",
 ]
 markers = [
     "slow: marks tests that take more than a couple of seconds (deselect with -m 'not slow')",
