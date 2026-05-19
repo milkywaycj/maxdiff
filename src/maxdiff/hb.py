@@ -5,22 +5,24 @@ imports fail, :data:`HAS_NUMPYRO` is False and :data:`NUMPYRO_ERROR`
 holds the failure message; attempting to instantiate
 :class:`HierarchicalBayesMaxDiff` then raises a clear ImportError.
 
-Implementation notes (current state; see Phase 4 plan for fixes):
+Implementation notes:
 
-* Reference-item parameterization: last item in ``self.items`` is
-  fixed at utility 0 during sampling. ``self.items`` order comes
-  from ``pd.unique(...)`` which depends on input row order, so the
-  reference item is effectively arbitrary. Phase 4 will switch to a
-  symmetric (sum-to-zero) constraint.
+* Sum-to-zero parameterization. The MaxDiff likelihood is invariant
+  to constant shifts, so an identification constraint is required.
+  Phase 4 switched from a "last item fixed at 0" reference scheme
+  (where "last" was arbitrary, set by first-occurrence order from
+  ``pd.unique(...)``, and produced asymmetric priors) to a hard
+  sum-to-zero on both the population mean and each respondent's
+  utility vector. The prior is now symmetric across all items.
 
 * Phantom-item padding: tasks with fewer items than the maximum get
   padded with item index 0. In practice this path is gated by
   :func:`maxdiff.formats.check_errors` so it never fires in normal
-  use, but the dead code should be cleaned up in Phase 4.
+  use; the dead code is on the Phase 6 cleanup list.
 
 * Parallel chains: ``numpyro.set_host_device_count(4)`` is set at
   import time but chains are run sequentially with ``num_chains=1``.
-  Phase 4 should switch to true parallel chains.
+  Phase 6 will switch to true parallel chains.
 
 * R-hat thresholds: the convergence reporter calls 1.05-1.10
   "Good" and 1.10-1.20 "Acceptable", which is too permissive.
@@ -166,18 +168,43 @@ class HierarchicalBayesMaxDiff:
         n_tasks,
         n_items_per_task,
     ) -> None:
-        n_free = n_items - 1  # Reference (last) item fixed at 0
+        """Sum-to-zero parameterization (Phase 4).
 
-        mu = numpyro.sample("mu", dist.Normal(0.0, 2.0).expand([n_free]))
-        sigma = numpyro.sample("sigma", dist.HalfNormal(1.5).expand([n_free]))
+        The MaxDiff likelihood is invariant to a constant shift across
+        items, so an identification constraint is required. The
+        original implementation fixed the *last* item at 0, where
+        "last" was determined by the first-occurrence order in
+        ``pd.unique(...)`` of the input data and therefore essentially
+        arbitrary. Combined with the asymmetric ``Normal(0, 2)`` prior
+        on free items vs ``0`` for the reference, this produced
+        recovery bias on extreme items.
 
+        We instead enforce a hard sum-to-zero on both the population
+        mean and each respondent's individual utilities. The first
+        n-1 items are free; the last item is derived as
+        ``-sum(first_n_minus_1)``. The prior is therefore identical
+        for all items, and post-hoc zero-centering becomes a no-op.
+        """
+        n_free = n_items - 1
+
+        # Population-level parameters for n-1 free items; the n-th
+        # item is the negative sum of the others, enforcing sum-to-zero.
+        mu_free = numpyro.sample("mu_free", dist.Normal(0.0, 2.0).expand([n_free]))
+        sigma_free = numpyro.sample("sigma_free", dist.HalfNormal(1.5).expand([n_free]))
+
+        # Non-centered parameterization for individual utilities.
         z = numpyro.sample("z", dist.Normal(0.0, 1.0).expand([n_respondents, n_free]))
-        u_free = mu + sigma * z
+        u_resp_free = mu_free + sigma_free * z  # (n_respondents, n_free)
 
-        u_ref = jnp.zeros((n_respondents, 1))
-        u = jnp.concatenate([u_free, u_ref], axis=1)
+        # Sum-to-zero is enforced separately at the population and
+        # per-respondent levels. Each respondent's n-th utility is
+        # determined by their own free utilities, so individual
+        # heterogeneity survives the constraint.
+        u_resp_last = -u_resp_free.sum(axis=-1, keepdims=True)  # (n_respondents, 1)
+        u = jnp.concatenate([u_resp_free, u_resp_last], axis=-1)
 
-        mu_full = jnp.concatenate([mu, jnp.zeros(1)])
+        mu_last = -mu_free.sum()
+        mu_full = jnp.concatenate([mu_free, mu_last[None]])
 
         resp_idx = jnp.arange(n_respondents)[:, None, None]
         u_task = u[resp_idx, items_in_tasks]
@@ -280,7 +307,7 @@ class HierarchicalBayesMaxDiff:
             self.samples[key] = np.concatenate([s[key] for s in all_samples], axis=0)
 
         if log_callback:
-            total_samples = self.samples["mu"].shape[0]
+            total_samples = self.samples["mu_free"].shape[0]
             log_callback(f"  Total posterior samples: {total_samples}")
 
         self._check_convergence_across_chains(all_samples, log_callback)
@@ -304,7 +331,7 @@ class HierarchicalBayesMaxDiff:
             return
 
         try:
-            mu_by_chain = np.stack([s["mu"] for s in all_samples], axis=0)
+            mu_by_chain = np.stack([s["mu_free"] for s in all_samples], axis=0)
             _n_chains, n_samples, _n_params = mu_by_chain.shape
 
             chain_means = mu_by_chain.mean(axis=1)
