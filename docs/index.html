@@ -15,6 +15,9 @@
     .card p { margin: 0 0 12px; }
     a.btn { display: inline-block; padding: 10px 14px; border-radius: 10px; text-decoration: none; font-weight: 600; background: #3b5bdb; color: #fff; }
     a.btn.secondary { background: #495057; }
+    a.btn.desktop { background: #0f766e; }
+    .note { background: #fff8db; border: 1px solid #ffe08a; border-radius: 10px; padding: 14px 16px; margin-top: 18px; }
+    .note p { margin: 0; }
     .meta { margin-top: 18px; font-size: 0.92rem; color: #555; }
     code { background: #eef; padding: 2px 6px; border-radius: 6px; }
   </style>
@@ -24,10 +27,14 @@
     <h1>MaxDiff</h1>
     <p>Open tools for creating and analyzing MaxDiff studies.</p>
 
+    <div class="note">
+      <p><strong>Recommended default:</strong> Use count-based analysis with bootstrap confidence intervals for most MaxDiff studies. Need Hierarchical Bayes (HB) or individual-level utilities? Use the Windows desktop version from GitHub Releases.</p>
+    </div>
+
     <div class="grid">
       <div class="card">
         <h2>MaxDiff Analysis Tool</h2>
-        <p>Run the browser-based (Pyodide/WebAssembly) analysis tool. Your data stays local in your browser.</p>
+        <p>Run the browser-based analysis tool. Your data stays local in your browser. Supports count-based scores and bootstrap confidence intervals.</p>
         <a class="btn" href="./analysis/">Open analysis tool</a>
       </div>
 
@@ -35,6 +42,12 @@
         <h2>MaxDiff Design Tool</h2>
         <p>Create balanced MaxDiff designs in the browser.</p>
         <a class="btn secondary" href="./design/">Open design tool</a>
+      </div>
+
+      <div class="card">
+        <h2>Windows Desktop Tool</h2>
+        <p>Download the desktop executable for a local Windows app. It defaults to count-based analysis and can enable HB when individual-level utilities are needed.</p>
+        <a class="btn desktop" href="https://github.com/milkywaycj/maxdiff/releases/latest">Get desktop version</a>
       </div>
     </div>
 
