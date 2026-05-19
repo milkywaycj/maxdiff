@@ -213,6 +213,10 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+# Claude Code agent affordances (preview launch config, session
+# notes, etc.). Dev-only; should not ship to consumers of the repo.
+.claude/
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
