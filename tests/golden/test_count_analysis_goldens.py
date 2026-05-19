@@ -20,7 +20,6 @@ import pytest
 from tests.helpers import legacy_loader
 from tests.helpers.synthetic_data import make_dataset
 
-
 pytestmark = pytest.mark.golden
 
 

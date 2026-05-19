@@ -1,11 +1,60 @@
-# Phase 1 configuration: tooling only.
-#
-# The package itself (currently src/MaxDiff_Data_Analyzer_v2-1.py) is not
-# yet installable as a Python distribution. That will be addressed when
-# the analysis core is extracted into a maxdiff package (Phase 3). For
-# now, this file declares only test, lint, and coverage configuration so
-# that CI and contributors have a single source of truth for tool
-# settings.
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "maxdiff"
+description = "Analysis library for MaxDiff (best-worst scaling) studies"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10,<3.13"
+authors = [{ name = "Carl J" }]
+keywords = ["maxdiff", "best-worst", "survey", "choice-modeling"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dynamic = ["version"]
+dependencies = [
+    "pandas>=2.0,<3.0",
+    "numpy>=1.24,<3.0",
+    "matplotlib>=3.6,<4.0",
+]
+
+[project.optional-dependencies]
+hb = [
+    "jax>=0.4",
+    "numpyro>=0.13",
+]
+desktop = [
+    "customtkinter>=5.2",
+    "seaborn>=0.12",
+    "openpyxl>=3.1",
+]
+
+[project.urls]
+Homepage = "https://milkywaycj.github.io/maxdiff/"
+Repository = "https://github.com/milkywaycj/maxdiff"
+Issues = "https://github.com/milkywaycj/maxdiff/issues"
+
+[tool.setuptools.dynamic]
+version = { attr = "maxdiff._version.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["maxdiff*"]
+
+# ---------------------------------------------------------------------------
+# Developer tooling configuration follows.
+# ---------------------------------------------------------------------------
 
 [tool.pytest.ini_options]
 minversion = "8.0"
@@ -101,7 +150,12 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["B011"]  # assert False is fine in tests
-"src/MaxDiff_Data_Analyzer_v2-1.py" = ["B", "SIM", "UP"]  # legacy file, refactor in Phase 3
+"src/MaxDiff_Data_Analyzer_v2-1.py" = [
+    "B", "SIM", "UP",  # legacy entry point; pre-Phase-3 style preserved
+    "RUF001",  # times-sign in user-facing strings is intentional
+    "RUF005",  # list concatenations preserved for readability
+]
+"src/maxdiff/display.py" = ["RUF001"]  # status emojis use box-drawing/symbol chars on purpose
 
 [tool.ruff.format]
 quote-style = "double"
