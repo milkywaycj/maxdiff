@@ -41,6 +41,28 @@ between minor versions, but breaking changes are called out under
   the EXE will remain unsigned; `README.md` walks first-time Windows
   users through the SmartScreen dialog more carefully.
 
+### Added (Phase 11)
+- **HB regression goldens** at
+  `tests/golden/test_hb_goldens.py`. A small fixed-seed HB fit
+  (N=100, 500+500 MCMC iterations, 1 chain) pins the population Score
+  column and the credible-interval widths to checked-in CSVs in
+  `tests/golden/expected/hb_*.csv` with generous tolerances
+  (`float_tol=0.1` and `0.15` respectively) sized for JAX-version
+  drift, not MCMC sampling noise. Catches HB regressions that the
+  recovery test (which uses a 0.5 tolerance against ground truth)
+  would miss. ~9-10s, marked `hb` / `slow` / `golden`; skips when
+  numpyro / jax is unavailable.
+
+### Added (Phase 12)
+- **PyPI Trusted Publishing** wired into `.github/workflows/release.yml`.
+  The publish step uses OIDC (no long-lived token) and is gated on the
+  GitHub repository variable `MAXDIFF_PYPI_PUBLISH` so it remains inert
+  until the maintainer completes the one-time PyPI-side setup
+  documented in `docs/RELEASE.md`. The `release` job now scopes
+  `contents: write` and `id-token: write` per-job rather than at the
+  workflow level, so the build jobs run with the default read-only
+  GITHUB_TOKEN.
+
 ## [3.0.0.dev0] - 2026-05-19
 
 This is the first formal release of the `maxdiff` Python package and

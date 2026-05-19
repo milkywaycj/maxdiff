@@ -30,7 +30,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write  # needed by softprops/action-gh-release on tag pushes
+  contents: read
 
 jobs:
   build-python:
@@ -139,6 +139,9 @@ jobs:
     # Only publish a Release for real tag pushes. workflow_dispatch runs
     # stop here, leaving the per-job artifacts for inspection.
     if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write  # needed by softprops/action-gh-release on tag pushes
+      id-token: write  # needed by pypa/gh-action-pypi-publish (Trusted Publishing)
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -171,15 +174,17 @@ jobs:
             dist/windows/*.exe
 
       # ----------------------------------------------------------------
-      # OPTIONAL: PyPI publishing. Disabled until the maintainer decides
-      # to publish to PyPI. To enable:
-      #   1. Create a PyPI API token scoped to the `maxdiff` project
-      #      (or set up Trusted Publishing via OIDC).
-      #   2. Add it as repo secret PYPI_API_TOKEN.
-      #   3. Uncomment the step below.
+      # PyPI publishing via Trusted Publishing (OIDC). Gated on the
+      # repository variable MAXDIFF_PYPI_PUBLISH so the step is inert
+      # until the maintainer activates it. See docs/RELEASE.md
+      # ("Publishing to PyPI") for the one-time setup procedure on the
+      # PyPI side; the GitHub side is just flipping the variable to
+      # '1'. No long-lived tokens are involved: the publish action
+      # exchanges the GitHub-issued OIDC token for a short-lived PyPI
+      # upload token at runtime.
       # ----------------------------------------------------------------
-      # - name: Publish to PyPI
-      #   uses: pypa/gh-action-pypi-publish@release/v1
-      #   with:
-      #     packages-dir: dist/python
-      #     password: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Publish to PyPI (Trusted Publishing)
+        if: ${{ vars.MAXDIFF_PYPI_PUBLISH == '1' }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/python

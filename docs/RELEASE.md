@@ -81,16 +81,54 @@ wheel installs and the EXE launches on a real Windows machine.
 
 ## Required secrets
 
-None at the moment. The `GITHUB_TOKEN` provided automatically by
-Actions is sufficient to create Releases.
+None. The `GITHUB_TOKEN` provided automatically by Actions covers
+the GitHub Release step, and PyPI publishing (below) uses OIDC
+Trusted Publishing rather than a stored token.
 
-If you later decide to publish to PyPI, add:
+## Publishing to PyPI
 
-- `PYPI_API_TOKEN` — a PyPI API token scoped to the `maxdiff` project.
+The release workflow includes a `Publish to PyPI (Trusted Publishing)`
+step that is **inert by default** — it's gated on the GitHub repository
+variable `MAXDIFF_PYPI_PUBLISH`. No PyPI uploads happen until the
+variable is set to `1`, so existing tag pushes are unaffected. When
+you're ready to publish:
 
-The PyPI publish step is present in `release.yml` but **commented out**.
-Uncomment it once the secret is in place. Prefer Trusted Publishing
-(OIDC) over a long-lived token for new projects.
+### One-time setup (PyPI side)
+
+1. Create an account on <https://pypi.org/> if you don't have one.
+2. Reserve the `maxdiff` project name by either (a) uploading an
+   initial 0.0.0 placeholder via `twine upload` from your laptop with
+   an API token, or (b) using PyPI's "pending publisher" flow which
+   allows a Trusted Publisher to claim a not-yet-existing project on
+   its first upload. Option (b) is cleaner; the GitHub-issued OIDC
+   token will create the project automatically on the first release.
+3. Go to <https://pypi.org/manage/account/publishing/> and add a new
+   **Trusted Publisher** with these fields:
+   - PyPI Project Name: `maxdiff`
+   - Owner: `milkywaycj`
+   - Repository name: `maxdiff`
+   - Workflow filename: `release.yml`
+   - Environment name: *(leave blank, the workflow does not use one)*
+
+### One-time setup (GitHub side)
+
+1. Open <https://github.com/milkywaycj/maxdiff/settings/variables/actions>.
+2. Click **New repository variable**.
+3. Name: `MAXDIFF_PYPI_PUBLISH`. Value: `1`. Click **Add variable**.
+
+Variables (unlike secrets) are visible in workflow logs, which is
+fine here — the value is a flag, not a credential. The OIDC exchange
+happens transparently inside `pypa/gh-action-pypi-publish` at job
+runtime; no long-lived token is ever stored on either side.
+
+### After activation
+
+Every subsequent `v*.*.*` tag push will publish the built wheel and
+sdist to PyPI in addition to the GitHub Release. To temporarily
+disable publishing without removing the workflow step, set
+`MAXDIFF_PYPI_PUBLISH` to anything other than `1` (e.g. `0`, or
+delete the variable). To permanently disable, delete the step from
+`release.yml`.
 
 ## Manual fallback
 
