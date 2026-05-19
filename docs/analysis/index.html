@@ -649,10 +649,10 @@
                 </div>
                 
                 <div class="result-tabs" id="resultTabs">
-                    <button class="tab-btn active" onclick="showTab('scores')">Net Scores</button>
-                    <button class="tab-btn" onclick="showTab('frequencies')">Selection Frequencies</button>
-                    <button class="tab-btn" onclick="showTab('balance')">Display Balance</button>
-                    <button class="tab-btn" onclick="showTab('data')">Data Tables</button>
+                    <button class="tab-btn active" onclick="showTab(event, 'scores')">Net Scores</button>
+                    <button class="tab-btn" onclick="showTab(event, 'frequencies')">Selection Frequencies</button>
+                    <button class="tab-btn" onclick="showTab(event, 'balance')">Display Balance</button>
+                    <button class="tab-btn" onclick="showTab(event, 'data')">Data Tables</button>
                 </div>
                 
                 <div class="result-panel active" id="panel-scores">
@@ -1692,6 +1692,17 @@ self.onmessage = async (e) => {
             renderTable('displayTable', data.display_data);
         }
 
+        function formatCell(value) {
+            if (value === null || value === undefined) return '';
+            if (typeof value !== 'number') return String(value);
+            if (!Number.isFinite(value)) return String(value);
+            // Integer-valued numbers (Times Displayed, counts, sample sizes)
+            // display without decimal places. Fractional numbers (scores,
+            // rates, percentiles) display with two decimal places.
+            if (Number.isInteger(value)) return value.toLocaleString();
+            return value.toFixed(2);
+        }
+
         function renderChart(containerId, base64Image, altText) {
             const container = document.getElementById(containerId);
             container.replaceChildren();
@@ -1746,11 +1757,7 @@ self.onmessage = async (e) => {
                 const tr = document.createElement('tr');
                 headers.forEach(header => {
                     const td = document.createElement('td');
-                    let value = row[header];
-                    if (typeof value === 'number') {
-                        value = value.toFixed(2);
-                    }
-                    td.textContent = value ?? '';
+                    td.textContent = formatCell(row[header]);
                     tr.appendChild(td);
                 });
                 tbody.appendChild(tr);
@@ -1760,11 +1767,13 @@ self.onmessage = async (e) => {
             container.appendChild(wrapper);
         }
         
-        function showTab(tabName) {
+        function showTab(evt, tabName) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.result-panel').forEach(panel => panel.classList.remove('active'));
-            
-            event.target.classList.add('active');
+
+            if (evt && evt.currentTarget) {
+                evt.currentTarget.classList.add('active');
+            }
             document.getElementById('panel-' + tabName).classList.add('active');
         }
         
