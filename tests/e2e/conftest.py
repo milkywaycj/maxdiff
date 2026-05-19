@@ -16,23 +16,15 @@ by pytest-playwright) to drive a real Chromium instance.
 from __future__ import annotations
 
 import http.server
-import socket
 import socketserver
 import threading
 from collections.abc import Iterator
-from contextlib import closing
 from pathlib import Path
 
 import pytest
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _DOCS_DIR = _REPO_ROOT / "docs"
-
-
-def _pick_free_port() -> int:
-    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
 
 
 class _SilentHandler(http.server.SimpleHTTPRequestHandler):
@@ -45,7 +37,7 @@ class _SilentHandler(http.server.SimpleHTTPRequestHandler):
 class _DocsServer(socketserver.ThreadingTCPServer):
     allow_reuse_address = True
 
-    def __init__(self, port: int) -> None:
+    def __init__(self) -> None:
         # SimpleHTTPRequestHandler resolves relative paths against
         # the current working directory. Pass the docs root via the
         # `directory` parameter so it's hermetic.
@@ -58,14 +50,20 @@ class _DocsServer(socketserver.ThreadingTCPServer):
         def factory(*args: object, **kwargs: object) -> http.server.SimpleHTTPRequestHandler:
             return handler_cls(*args, directory=str(_DOCS_DIR), **kwargs)
 
-        super().__init__(("127.0.0.1", port), factory)
+        # Bind directly to port 0 so the OS picks an available port
+        # atomically. Earlier revisions picked a free port with a
+        # separate probe socket and then re-bound the server, which
+        # is racy under pytest-xdist: another worker could grab the
+        # port in the window between probe-close and server-bind,
+        # producing intermittent EADDRINUSE on CI runners.
+        super().__init__(("127.0.0.1", 0), factory)
 
 
 @pytest.fixture(scope="session")
 def docs_server() -> Iterator[str]:
-    """Serve ``docs/`` on a random localhost port for the test session."""
-    port = _pick_free_port()
-    server = _DocsServer(port)
+    """Serve ``docs/`` on a free localhost port for the test session."""
+    server = _DocsServer()
+    port = server.server_address[1]
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     base_url = f"http://127.0.0.1:{port}"
