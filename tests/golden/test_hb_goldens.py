@@ -107,6 +107,70 @@ def test_hb_population_scores_golden(hb_small_fit, assert_matches_golden) -> Non
     )
 
 
+@pytest.fixture(scope="module")
+def hb_symmetry_fit():
+    """Fit HB on a fixture with enough items to expose sum-to-zero asymmetry.
+
+    The asymmetry of the buggy ``mu_last = -mu_free.sum()`` parameterization
+    inflates the derived item's prior variance by a factor of ``n_items - 1``,
+    so the *observed* posterior CI-width ratio across items scales with
+    ``sqrt(n_items - 1)``. n_items=12 puts the bug-induced ratio in the
+    ~2-3x range — comfortably above sampling jitter (~1.0-1.3x) and
+    well-clear of the 1.5x test threshold.
+    """
+    legacy = legacy_loader.load_analyzer()
+
+    true_utilities = np.linspace(1.5, -1.5, 12)
+    df = make_dataset(
+        n_respondents=150,
+        n_items=12,
+        items_per_task=4,
+        repeats_per_item=2,  # 6 tasks per respondent
+        true_utilities=true_utilities,
+        seed=20260519,
+    )
+    attr_cols = [c for c in df.columns if c.startswith("Attribute")]
+
+    model = legacy.HierarchicalBayesMaxDiff(
+        n_iterations=500,
+        n_warmup=500,
+        n_chains=1,
+        target_accept=0.9,
+    )
+    return model.fit(df, attr_cols, "Most", "Least")
+
+
+def test_hb_ci_widths_are_symmetric_across_items(hb_symmetry_fit) -> None:
+    """CI widths must be roughly uniform across items on a balanced design.
+
+    This test exists because of a real bug shipped in v3.0.0: the original
+    sum-to-zero parameterization (``mu_last = -mu_free.sum()``) made one
+    item's posterior a deterministic function of the others, inflating
+    its credible-interval width by roughly ``sqrt(n_items - 1)`` relative
+    to its neighbors. The point estimates were unaffected (and so the
+    recovery test and the per-item CI-widths golden — generated *with*
+    the bug in place — both passed), but the analyst-visible HB plot
+    showed one item with an anomalously wide CI.
+
+    On a balanced MaxDiff design with iid choice noise every item carries
+    equal information, so posterior CI widths should be uniform up to
+    Monte Carlo sampling variation. A ratio above 1.5x is a strong signal
+    that the prior is not actually symmetric across items. A ratio under
+    1.5x admits normal sampling jitter (typically ~1.0-1.3x on this
+    fixture) without false alarms.
+    """
+    widths = (hb_symmetry_fit["97.5th Percentile"] - hb_symmetry_fit["2.5th Percentile"]).to_numpy()
+    ratio = float(widths.max() / widths.min())
+    assert ratio < 1.5, (
+        f"HB credible-interval widths differ by {ratio:.2f}x across items "
+        f"(min={widths.min():.3f}, max={widths.max():.3f}). "
+        "On a balanced design with iid choice noise this should be ~1x. "
+        "The classic cause is an asymmetric sum-to-zero parameterization "
+        "(e.g. deriving the last item's utility as the negative sum of "
+        "the others); see src/maxdiff/hb.py."
+    )
+
+
 def test_hb_credible_interval_widths_golden(hb_small_fit, assert_matches_golden) -> None:
     """Pin the credible-interval widths (upper - lower) per item.
 

@@ -116,10 +116,13 @@ Hierarchical Bayes MaxDiff via NumPyro NUTS. Optional dependency on
 likelihood is the Displayr/Sawtooth-style "tricked logit" (best and
 worst contribute two independent multinomial choices per task);
 respondent utilities use a non-centered parameterization. The
-identification constraint is a hard per-respondent sum-to-zero: n-1
-free utilities are sampled, the n-th is the negative sum. Population
-mean is concatenated the same way. R-hat thresholds follow
-Vehtari et al. 2021.
+identification constraint is a hard per-respondent sum-to-zero,
+realised via an orthonormal basis ``Q`` of the sum-to-zero subspace of
+``R^n`` (Stan's ``sum_to_zero_vector`` / PyMC's ``ZeroSumNormal``).
+Sample ``n-1`` free parameters and map to ``n`` item-space utilities
+via ``Q``: each result sums to exactly 0 and has symmetric marginal
+priors across all items. Population mean uses the same transform.
+R-hat thresholds follow Vehtari et al. 2021.
 
 ### `io.py`
 `read_tabular_file` reads a CSV or XLSX path with encoding fallback:

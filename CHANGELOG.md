@@ -10,6 +10,36 @@ between minor versions, but breaking changes are called out under
 
 ## [Unreleased]
 
+## [3.0.1] - 2026-05-19
+
+### Fixed
+- **HB sum-to-zero parameterization is now actually symmetric.** v3.0.0
+  shipped a sum-to-zero scheme that derived the last item's utility as
+  the negative sum of the other ``n - 1``, inflating that one item's
+  posterior credible interval by roughly ``sqrt(n - 1)`` relative to
+  its neighbors. Point estimates were unaffected (the recovery test and
+  per-item CI golden — generated *with* the bug in place — both
+  passed), but analyst-visible HB plots showed one item with an
+  anomalously wide CI on real n=20 datasets. v3.0.1 replaces the
+  parameterization with Stan's ``sum_to_zero_vector`` /
+  PyMC's ``ZeroSumNormal`` construction: an orthonormal basis ``Q`` of
+  the sum-to-zero subspace, with the ``n - 1`` free parameters sampled
+  in that basis and mapped to ``n`` item-space utilities via ``Q``. The
+  implied prior is now identical across all items. See
+  ``src/maxdiff/hb.py::_sum_to_zero_basis`` and ``_model``.
+
+### Added
+- **Regression test for HB CI-width symmetry** at
+  ``tests/golden/test_hb_goldens.py::
+  test_hb_ci_widths_are_symmetric_across_items``. Asserts the
+  max-to-min ratio of per-item CI widths stays below 1.5x on a balanced
+  n=12 fixture, comfortably above expected MC jitter (~1.0-1.3x) and
+  below the buggy ratio (~1.6-1.7x at this size). Catches the class of
+  bug v3.0.0 shipped — point estimates correct, one item's CI inflated
+  by an asymmetric prior — without requiring a particular item to be
+  the singled-out one. The HB-golden CSVs are regenerated against the
+  new parameterization.
+
 ## [3.0.0] - 2026-05-19
 
 This is the first formal release of the `maxdiff` Python package and

@@ -9,11 +9,15 @@ Implementation notes:
 
 * Sum-to-zero parameterization. The MaxDiff likelihood is invariant
   to constant shifts, so an identification constraint is required.
-  Phase 4 switched from a "last item fixed at 0" reference scheme
-  (where "last" was arbitrary, set by first-occurrence order from
-  ``pd.unique(...)``, and produced asymmetric priors) to a hard
-  sum-to-zero on both the population mean and each respondent's
-  utility vector. The prior is now symmetric across all items.
+  v3.0.1 uses an orthonormal-basis construction (Stan's
+  ``sum_to_zero_vector`` / PyMC's ``ZeroSumNormal``): sample ``n-1``
+  free parameters and map to ``n`` item-space utilities via a fixed
+  ``n x (n-1)`` matrix ``Q`` with orthonormal columns spanning the
+  sum-to-zero subspace of ``R^n``. The result sums to exactly 0 and
+  has symmetric marginal priors across all items. Earlier
+  parameterizations were asymmetric and inflated the CI of one item
+  (the derived one) by roughly ``sqrt(n-1)`` relative to the others;
+  see ``_model``.
 
 * Malformed-task handling: a task with fewer recognized items than
   expected raises ``ValueError`` (Phase 6). The legacy implementation
@@ -65,6 +69,35 @@ except ImportError as e:
     NUMPYRO_ERROR = str(e)
 except Exception as e:  # pragma: no cover - JAX init can fail in exotic ways
     NUMPYRO_ERROR = str(e)
+
+
+def _sum_to_zero_basis(n_items: int):
+    """Return an ``(n_items, n_items - 1)`` orthonormal basis of the
+    sum-to-zero subspace of ``R^{n_items}``.
+
+    Properties guaranteed by construction:
+
+    * ``Q.T @ ones(n_items) == 0`` — each column sums to zero.
+    * ``Q.T @ Q == I_{n_items - 1}`` — columns are orthonormal.
+    * ``Q @ Q.T == I - (1/n) ones @ ones.T`` — the centering projector.
+
+    Consequently, for ``y ~ Normal(0, sigma * I_{n_items - 1})``,
+    ``u = Q @ y`` has ``sum(u) == 0`` exactly and marginal variance
+    ``sigma^2 * (n_items - 1) / n_items`` uniform across all items.
+    This is the "sum_to_zero_vector" / ``ZeroSumNormal`` parameterization
+    used in Stan and PyMC.
+
+    Implementation note: we obtain ``Q`` via SVD of the centering
+    projector for numerical stability. The (n-1) columns of the left
+    singular matrix corresponding to unit singular values span the
+    sum-zero subspace.
+    """
+    if not HAS_NUMPYRO:  # pragma: no cover - guarded by class __init__
+        raise ImportError("jax is required for _sum_to_zero_basis")
+    n = n_items
+    projector = jnp.eye(n) - jnp.ones((n, n)) / n
+    u_svd, _s, _vt = jnp.linalg.svd(projector)
+    return u_svd[:, : n - 1]
 
 
 class HierarchicalBayesMaxDiff:
@@ -200,43 +233,74 @@ class HierarchicalBayesMaxDiff:
         n_tasks,
         n_items_per_task,
     ) -> None:
-        """Sum-to-zero parameterization (Phase 4).
+        """Orthonormal-basis sum-to-zero parameterization (v3.0.1).
 
         The MaxDiff likelihood is invariant to a constant shift across
-        items, so an identification constraint is required. The
-        original implementation fixed the *last* item at 0, where
-        "last" was determined by the first-occurrence order in
-        ``pd.unique(...)`` of the input data and therefore essentially
-        arbitrary. Combined with the asymmetric ``Normal(0, 2)`` prior
-        on free items vs ``0`` for the reference, this produced
-        recovery bias on extreme items.
+        items, so an identification constraint is required. Earlier
+        revisions tried two asymmetric schemes:
 
-        We instead enforce a hard sum-to-zero on both the population
-        mean and each respondent's individual utilities. The first
-        n-1 items are free; the last item is derived as
-        ``-sum(first_n_minus_1)``. The prior is therefore identical
-        for all items, and post-hoc zero-centering becomes a no-op.
+        * "Last item fixed at 0" (pre-Phase-4): produced recovery bias
+          on extreme items because the prior on the reference item
+          differed from the others.
+        * "Last item = -sum(first n-1)" (Phase 4 through v3.0.0): the
+          population mean and the n-th respondent utility were
+          deterministic functions of the n-1 free draws. The prior on
+          the derived item was the sum of n-1 i.i.d. Normals, with
+          variance ``(n-1) x sigma^2`` rather than ``sigma^2``. Point
+          estimates still recovered correctly (the posterior mean of
+          the derived item is the negative sum of the others, which is
+          the correct identified value), but the credible interval on
+          one item was visibly wider than the others — see
+          ``tests/golden/test_hb_goldens.py::
+          test_hb_ci_widths_are_symmetric_across_items``.
+
+        v3.0.1 replaces both with a truly symmetric construction: an
+        orthonormal basis ``Q`` of the sum-to-zero subspace of R^n.
+        Sample ``n-1`` free parameters in that basis, then map to the
+        ``n``-dimensional item space via ``Q``. Because ``Q`` has
+        orthonormal columns and each column sums to zero, the resulting
+        vector sums to exactly 0 by construction and the implied prior
+        marginals are identical across all ``n`` items. This is the
+        same "sum_to_zero_vector" construction used in Stan and PyMC's
+        ``ZeroSumNormal``.
         """
         n_free = n_items - 1
 
-        # Population-level parameters for n-1 free items; the n-th
-        # item is the negative sum of the others, enforcing sum-to-zero.
-        mu_free = numpyro.sample("mu_free", dist.Normal(0.0, 2.0).expand([n_free]))
-        sigma_free = numpyro.sample("sigma_free", dist.HalfNormal(1.5).expand([n_free]))
+        # Orthonormal basis of the sum-to-zero subspace of R^{n_items}.
+        # Q is (n_items, n_free): each column sums to zero (Q.T @ 1 = 0),
+        # columns are orthonormal (Q.T @ Q = I), and Q @ Q.T equals the
+        # centering projector (I - 1/n * 11^T).
+        Q = _sum_to_zero_basis(n_items)
 
-        # Non-centered parameterization for individual utilities.
+        # Free-basis prior scales chosen so that the IMPLIED marginal
+        # variance on each item-space utility matches the original
+        # Normal(0, 2) / HalfNormal(1.5) priors. The Q transform dilates
+        # variance by (n-1)/n in each row, so we scale up by sqrt(n/(n-1))
+        # in the free basis. For n=20 this is a ~3% adjustment.
+        scale_factor = jnp.sqrt(n_items / n_free)
+        free_mu_scale = 2.0 * scale_factor
+        free_sigma_scale = 1.5 * scale_factor
+
+        # Population-level params in the free basis.
+        mu_raw = numpyro.sample("mu_raw", dist.Normal(0.0, free_mu_scale).expand([n_free]))
+
+        # Scalar respondent heterogeneity. Per-dimension sigma in the
+        # free basis would NOT be symmetric in item space (because Q
+        # mixes dimensions non-uniformly across items), so we use a
+        # single scale here — a minor model simplification in exchange
+        # for true item-space symmetry.
+        sigma = numpyro.sample("sigma", dist.HalfNormal(free_sigma_scale))
+
+        # Non-centered respondent deviations in the free basis.
         z = numpyro.sample("z", dist.Normal(0.0, 1.0).expand([n_respondents, n_free]))
-        u_resp_free = mu_free + sigma_free * z  # (n_respondents, n_free)
 
-        # Sum-to-zero is enforced separately at the population and
-        # per-respondent levels. Each respondent's n-th utility is
-        # determined by their own free utilities, so individual
-        # heterogeneity survives the constraint.
-        u_resp_last = -u_resp_free.sum(axis=-1, keepdims=True)  # (n_respondents, 1)
-        u = jnp.concatenate([u_resp_free, u_resp_last], axis=-1)
+        # Per-respondent params in the free basis, then mapped to item
+        # space via Q. Each row of u sums to 0 by construction.
+        u_resp_raw = mu_raw[None, :] + sigma * z  # (n_respondents, n_free)
+        u = u_resp_raw @ Q.T  # (n_respondents, n_items)
 
-        mu_last = -mu_free.sum()
-        mu_full = jnp.concatenate([mu_free, mu_last[None]])
+        # Population mean in item space.
+        mu_full = Q @ mu_raw  # (n_items,), sums to 0
 
         resp_idx = jnp.arange(n_respondents)[:, None, None]
         u_task = u[resp_idx, items_in_tasks]
@@ -339,7 +403,7 @@ class HierarchicalBayesMaxDiff:
             self.samples[key] = np.concatenate([s[key] for s in all_samples], axis=0)
 
         if log_callback:
-            total_samples = self.samples["mu_free"].shape[0]
+            total_samples = self.samples["mu_raw"].shape[0]
             log_callback(f"  Total posterior samples: {total_samples}")
 
         self._check_convergence_across_chains(all_samples, log_callback)
@@ -363,7 +427,7 @@ class HierarchicalBayesMaxDiff:
             return
 
         try:
-            mu_by_chain = np.stack([s["mu_free"] for s in all_samples], axis=0)
+            mu_by_chain = np.stack([s["mu_raw"] for s in all_samples], axis=0)
             _n_chains, n_samples, _n_params = mu_by_chain.shape
 
             chain_means = mu_by_chain.mean(axis=1)
