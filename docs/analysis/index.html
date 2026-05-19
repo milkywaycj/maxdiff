@@ -496,7 +496,7 @@
             <h1>📊 MaxDiff Analysis Tool</h1>
             <p>by Carl J</p>
             <br>
-            <p>Browser-based count/bootstrap analysis • Your data stays local and private</p>
+            <p>Browser-based count/bootstrap analysis • Your uploaded data never leaves your browser</p>
         </div>
         
         <div class="content">
@@ -1262,19 +1262,54 @@ def run_maxdiff_analysis(data_list, segment_list, options, progress_callback, lo
     return results
 `;
 
-        // Create Web Worker from inline code
-        function createWorker() {
+        // Pyodide is loaded from the jsDelivr CDN. The bootstrap script
+        // (pyodide.js) is integrity-checked against a pinned SHA-384 hash
+        // before being eval'd inside the worker, so a CDN compromise on
+        // that one file is detected and refused. Pyodide's WASM, stdlib,
+        // and package wheels are subsequently fetched by Pyodide itself
+        // from the same versioned CDN path; those are not currently
+        // integrity-pinned (see docs/analysis README) so this is
+        // defense-in-depth, not end-to-end verification.
+        const PYODIDE_VERSION = 'v0.24.1';
+        const PYODIDE_INDEX_URL = `https://cdn.jsdelivr.net/pyodide/${PYODIDE_VERSION}/full/`;
+        const PYODIDE_BOOTSTRAP_URL = `${PYODIDE_INDEX_URL}pyodide.js`;
+        const PYODIDE_BOOTSTRAP_SHA384 = '+R8PTzDXzivdjpxOqwVwRhPS9dlske7tKAjwj0O0Kr361gKY5d2Xe6Osl+faRLT7';
+
+        async function fetchPyodideBootstrap() {
+            const response = await fetch(PYODIDE_BOOTSTRAP_URL, { cache: 'force-cache' });
+            if (!response.ok) {
+                throw new Error(`Could not fetch Pyodide bootstrap: HTTP ${response.status}`);
+            }
+            const buffer = await response.arrayBuffer();
+            const digest = await crypto.subtle.digest('SHA-384', buffer);
+            const digestB64 = btoa(String.fromCharCode(...new Uint8Array(digest)));
+            if (digestB64 !== PYODIDE_BOOTSTRAP_SHA384) {
+                throw new Error(
+                    'Pyodide integrity check failed. The bootstrap script downloaded ' +
+                    'from the CDN does not match the pinned hash. Analysis was aborted ' +
+                    'to protect your data. Please report this at ' +
+                    'https://github.com/milkywaycj/maxdiff/issues'
+                );
+            }
+            return new TextDecoder('utf-8').decode(buffer);
+        }
+
+        // Create Web Worker from inline code. The verified Pyodide bootstrap
+        // source is inlined into the worker blob rather than loaded via
+        // importScripts(), because importScripts() does not honor SRI.
+        function createWorker(pyodideSource) {
             const workerCode = `
-importScripts('https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js');
+${pyodideSource}
 
 let pyodide = null;
+const PYODIDE_INDEX_URL = ${JSON.stringify(PYODIDE_INDEX_URL)};
 
 async function initPyodide(pythonCode) {
     self.postMessage({ type: 'status', message: 'Loading Python environment...' });
     
     try {
-        pyodide = await loadPyodide();
-        
+        pyodide = await loadPyodide({ indexURL: PYODIDE_INDEX_URL });
+
         self.postMessage({ type: 'status', message: 'Installing numpy...' });
         await pyodide.loadPackage('numpy');
         
@@ -1368,11 +1403,21 @@ self.onmessage = async (e) => {
         }
         
         // Initialize worker
-        function initWorker() {
+        async function initWorker() {
+            showLoading(true, 'Verifying Python runtime...');
+
+            let pyodideSource;
+            try {
+                pyodideSource = await fetchPyodideBootstrap();
+            } catch (err) {
+                showLoading(false);
+                log('❌ ' + err.message, 'error');
+                return;
+            }
+
             showLoading(true, 'Initializing...');
-            
-            worker = createWorker();
-            
+            worker = createWorker(pyodideSource);
+
             worker.onmessage = (e) => {
                 switch (e.data.type) {
                     case 'status':
