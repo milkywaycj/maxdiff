@@ -185,11 +185,21 @@ def _build_balanced_design(
 ) -> list[list[int]]:
     """Return a balanced design as a list of tasks, each a list of item indices.
 
-    Strategy: build a multiset pool (each item repeated ``repeats_per_item``
-    times), shuffle, slice into tasks of size ``items_per_task``. If any
-    task contains a duplicate item, reshuffle and retry. Practically
-    always succeeds within a handful of attempts for reasonable
-    parameter combinations; cap protects against pathological cases.
+    Two-stage algorithm:
+
+    1. Fast path: build a multiset pool (each item repeated
+       ``repeats_per_item`` times), shuffle, slice into tasks of size
+       ``items_per_task``. Random shuffle finds a valid design quickly
+       when items_per_task is comfortably smaller than n_items.
+
+    2. Greedy fallback: when items_per_task is close to (or equal to)
+       n_items, the constraint is tight and random shuffling rarely
+       lands on a valid arrangement. We instead build tasks one slot
+       at a time, picking from items that still have copies remaining
+       and aren't already in the current task, preferring those with
+       the most remaining copies (to avoid late starvation). This
+       always succeeds for any design that passes input validation,
+       at the cost of slightly less variety than a true uniform draw.
     """
     n_tasks = (n_items * repeats_per_item) // items_per_task
     pool_template = np.repeat(np.arange(n_items), repeats_per_item)
@@ -203,65 +213,46 @@ def _build_balanced_design(
         if all(len(set(task)) == items_per_task for task in tasks):
             return tasks
 
-    # Fallback: try the swap-repair strategy. We rebuild the pool one
-    # final time and walk tasks left-to-right, swapping duplicates with
-    # the first compatible item from a later task.
-    pool = pool_template.copy()
-    rng.shuffle(pool)
-    tasks = [pool[i * items_per_task : (i + 1) * items_per_task].tolist() for i in range(n_tasks)]
-    if _repair_with_swaps(tasks, items_per_task):
-        return tasks
-
-    raise SyntheticDesignError(
-        f"Could not build a balanced design after {_MAX_DESIGN_RETRIES} retries and a "
-        f"swap-repair pass with n_items={n_items}, items_per_task={items_per_task}, "
-        f"repeats_per_item={repeats_per_item}. The configuration may be too tight."
-    )
+    # Greedy fallback - guaranteed to succeed for any feasible design.
+    return _build_with_greedy_fill(n_items, items_per_task, repeats_per_item, n_tasks, rng)
 
 
-def _repair_with_swaps(tasks: list[list[int]], items_per_task: int) -> bool:
-    """Try to break duplicates by swapping with items in later tasks.
+def _build_with_greedy_fill(
+    n_items: int,
+    items_per_task: int,
+    repeats_per_item: int,
+    n_tasks: int,
+    rng: np.random.Generator,
+) -> list[list[int]]:
+    """Build a balanced design by greedy frequency-first selection.
 
-    Returns ``True`` on success (all tasks have distinct items),
-    ``False`` if repair could not converge.
+    For each task slot in turn, pick an item that still has copies in
+    the pool and isn't already in the current task, preferring items
+    with the most remaining copies. Picking the most-frequent
+    candidate prevents starvation where one item gets stuck and
+    cannot fit into the remaining task slots.
     """
-    n_tasks = len(tasks)
-    for _ in range(50):
-        # Find any task containing a duplicate.
-        bad_q = next((q for q, task in enumerate(tasks) if len(set(task)) != items_per_task), None)
-        if bad_q is None:
-            return True
-        bad_task = tasks[bad_q]
-        # Identify the duplicate item and one of its positions.
-        seen: set[int] = set()
-        dup_item = -1
-        dup_pos = -1
-        for pos, item in enumerate(bad_task):
-            if item in seen:
-                dup_item = item
-                dup_pos = pos
-                break
-            seen.add(item)
-
-        # Look for a task that has an item we don't already have, and
-        # to which we can give back the duplicate without creating a
-        # new duplicate there.
-        swapped = False
-        for q2 in range(n_tasks):
-            if q2 == bad_q:
-                continue
-            other = tasks[q2]
-            for p2, candidate in enumerate(other):
-                if candidate != dup_item and candidate not in bad_task and dup_item not in other:
-                    bad_task[dup_pos] = candidate
-                    other[p2] = dup_item
-                    swapped = True
-                    break
-            if swapped:
-                break
-        if not swapped:
-            return False
-    return all(len(set(task)) == items_per_task for task in tasks)
+    remaining = np.full(n_items, repeats_per_item, dtype=np.int64)
+    tasks: list[list[int]] = []
+    for _task_idx in range(n_tasks):
+        used: set[int] = set()
+        task: list[int] = []
+        for _slot in range(items_per_task):
+            candidates = [i for i in range(n_items) if remaining[i] > 0 and i not in used]
+            if not candidates:
+                raise SyntheticDesignError(
+                    "Greedy fill exhausted while building a design that should be "
+                    f"feasible (n_items={n_items}, items_per_task={items_per_task}, "
+                    f"repeats_per_item={repeats_per_item})."
+                )
+            max_remaining = max(remaining[i] for i in candidates)
+            best = [i for i in candidates if remaining[i] == max_remaining]
+            choice = int(rng.choice(best))
+            task.append(choice)
+            used.add(choice)
+            remaining[choice] -= 1
+        tasks.append(task)
+    return tasks
 
 
 def _sample_best_worst(
