@@ -56,7 +56,8 @@ Consumers should import from the top-level `maxdiff` namespace, not
 from submodules; submodule paths may change without notice.
 
 ### `_version.py`
-Single source of version truth. `__version__ = "3.0.0"`. Read
+Single source of version truth (e.g. `__version__ = "3.0.0"` at the
+3.0.0 tag; bumped to `X.Y.Z.devN` between releases). Read
 dynamically by `pyproject.toml` (`tool.setuptools.dynamic.version`)
 and re-exported from the package root. Kept in its own module so the
 build backend can read it without importing the analysis stack.
