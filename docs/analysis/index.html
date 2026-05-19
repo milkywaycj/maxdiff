@@ -958,16 +958,18 @@ def run_maxdiff_analysis(data_list, segment_list, options, progress_callback, lo
     return results
 `;
 
-        // Pyodide is loaded from the jsDelivr CDN. The bootstrap script
-        // (pyodide.js) is integrity-checked against a pinned SHA-384 hash
-        // before being eval'd inside the worker, so a CDN compromise on
-        // that one file is detected and refused. Pyodide's WASM, stdlib,
-        // and package wheels are subsequently fetched by Pyodide itself
-        // from the same versioned CDN path; those are not currently
-        // integrity-pinned (see docs/analysis README) so this is
-        // defense-in-depth, not end-to-end verification.
+        // Pyodide is vendored same-origin under docs/vendor/pyodide-<version>/
+        // by scripts/vendor_pyodide.py. The browser tool therefore inherits
+        // the GitHub Pages TLS boundary for every byte it executes:
+        // bootstrap loader, WASM, stdlib, and wheels. The bootstrap script
+        // is still SHA-384-checked before being eval'd inside the worker
+        // as defense-in-depth against tampering with the vendored copy
+        // itself (a repository compromise rather than a CDN compromise).
         const PYODIDE_VERSION = 'v0.24.1';
-        const PYODIDE_INDEX_URL = `https://cdn.jsdelivr.net/pyodide/${PYODIDE_VERSION}/full/`;
+        const PYODIDE_INDEX_URL = new URL(
+            `../vendor/pyodide-${PYODIDE_VERSION.replace(/^v/, '')}/`,
+            location.href,
+        ).toString();
         const PYODIDE_BOOTSTRAP_URL = `${PYODIDE_INDEX_URL}pyodide.js`;
         const PYODIDE_BOOTSTRAP_SHA384 = '+R8PTzDXzivdjpxOqwVwRhPS9dlske7tKAjwj0O0Kr361gKY5d2Xe6Osl+faRLT7';
 
@@ -992,8 +994,8 @@ def run_maxdiff_analysis(data_list, segment_list, options, progress_callback, lo
             const digestB64 = btoa(String.fromCharCode(...new Uint8Array(digest)));
             if (digestB64 !== PYODIDE_BOOTSTRAP_SHA384) {
                 throw new Error(
-                    'Pyodide integrity check failed. The bootstrap script downloaded ' +
-                    'from the CDN does not match the pinned hash. Analysis was aborted ' +
+                    'Pyodide integrity check failed. The vendored bootstrap script ' +
+                    'does not match the pinned SHA-384 hash. Analysis was aborted ' +
                     'to protect your data. Please report this at ' +
                     'https://github.com/milkywaycj/maxdiff/issues'
                 );

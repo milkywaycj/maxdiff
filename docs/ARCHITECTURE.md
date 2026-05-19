@@ -10,10 +10,12 @@ The same `maxdiff` Python package powers all three forms the tool is
 shipped in:
 
 1. **Browser** — `docs/analysis/index.html` runs Python in the user's
-   browser via Pyodide (CPython compiled to WebAssembly). The page
-   loads the `maxdiff` wheel from `docs/wheels/<version>/` using
-   micropip and calls the public API directly. No data leaves the
-   browser.
+   browser via Pyodide (CPython compiled to WebAssembly). The Pyodide
+   runtime is vendored under `docs/vendor/pyodide-<version>/` and the
+   `maxdiff` wheel under `docs/wheels/<version>/`, both served
+   same-origin from GitHub Pages. The page calls micropip on the
+   vendored wheel and the public API directly. No data leaves the
+   browser, and no third-party origin is contacted at runtime.
 2. **Desktop (Windows)** — `src/MaxDiff_Data_Analyzer_v2-1.py` is a
    customtkinter GUI that imports from `maxdiff` and presents the same
    pipeline plus interactive plotting, segmentation, and Hierarchical
@@ -139,17 +141,19 @@ works without corrupting matplotlib's thread-unsafe global state.
 
 `docs/analysis/index.html` is a single-page Pyodide application:
 
-1. **SRI-verified Pyodide bootstrap.** The page fetches Pyodide's
-   `pyodide.js` bootstrap script from the pinned versioned CDN URL on
-   the main thread, computes the SHA-384 digest via `crypto.subtle`,
-   compares it to a pinned `PYODIDE_BOOTSTRAP_SHA384` constant, and
-   refuses to proceed on mismatch. The verified bytes are inlined
-   into the worker blob and `loadPyodide()` is called with the same
-   pinned `PYODIDE_INDEX_URL` so subsequent WASM / stdlib loads use
-   the same versioned path. `importScripts()` is not used — it
-   doesn't honor subresource integrity. This is defense-in-depth; the
-   later Pyodide-initiated fetches are not currently integrity-pinned
-   and full vendoring is tracked as a follow-up.
+1. **Same-origin Pyodide.** The Pyodide runtime is vendored under
+   `docs/vendor/pyodide-<version>/` by `scripts/vendor_pyodide.py`
+   and served same-origin from GitHub Pages. The closure of
+   `micropip`, `numpy`, `pandas`, and `matplotlib` (computed from
+   Pyodide's own `pyodide-lock.json`) is committed alongside the
+   core bootstrap files. Every byte the user runs is in `git log`,
+   and the GitHub Pages TLS boundary covers the whole stack rather
+   than just the entry-point HTML. As defense-in-depth against
+   tampering with the vendored copy itself, the page still SHA-384-
+   checks `pyodide.js` against a pinned constant before `eval`'ing
+   it inside the worker and refuses to proceed on mismatch. The
+   verified bytes are inlined into the worker blob (not loaded via
+   `importScripts()`, which doesn't honor subresource integrity).
 2. **`maxdiff` wheel served from the repo.** `docs/wheels/<version>/
    maxdiff-<version>-py3-none-any.whl` is installed via micropip:
    `await micropip.install(MAXDIFF_WHEEL_URL)`. Hosting the wheel

@@ -27,15 +27,25 @@ the JAX/NumPyro stack is too heavy for Pyodide.
 
 Download the latest Windows EXE from the
 [releases page](https://github.com/milkywaycj/maxdiff/releases/latest).
-Hierarchical Bayes is bundled — no extra install needed. Windows
-SmartScreen will warn about an "unknown publisher" on first run
-because we don't currently pay for code signing; see the "First run"
-note below.
+Hierarchical Bayes is bundled — no extra install needed.
 
-**First run.** When SmartScreen blocks the EXE, click **More info** →
-**Run anyway**. The app launches a customtkinter GUI; on launch it
-probes for `jax` / `numpyro` and enables the Hierarchical Bayes option
-if they are importable. The bundled EXE always has them.
+**First run on Windows.** The EXE is not code-signed (this is a free
+open-source project and Microsoft does not offer a free signing
+option), so Windows SmartScreen will show a blue "Windows protected
+your PC" dialog the first time you launch it. This is expected for
+unsigned open-source binaries and does not mean the EXE is unsafe;
+the source is in this repository and CI builds it from a tagged
+commit. To run it:
+
+1. Click the small **More info** link in the SmartScreen dialog.
+2. Click the **Run anyway** button that appears underneath.
+
+SmartScreen remembers the decision after the first run. The EXE
+launches a customtkinter GUI; on launch it probes for `jax` /
+`numpyro` and enables the Hierarchical Bayes option if they are
+importable. The bundled EXE always has them. If you'd rather avoid
+the dialog entirely, the `pip install maxdiff` path below works on
+any platform with Python and has no SmartScreen interaction.
 
 ### Python package
 
@@ -129,8 +139,12 @@ maxdiff/
     analysis/index.html            Browser analysis tool (Pyodide + micropip)
     design/index.html              Browser design tool
     wheels/<version>/              In-repo wheel served to Pyodide
+    vendor/pyodide-<version>/      Vendored Pyodide runtime (same-origin)
     RELEASE.md                     Release procedure
     ARCHITECTURE.md                Architecture and design notes
+
+  scripts/
+    vendor_pyodide.py              Re-runnable fetch of docs/vendor/pyodide-*
 
   tests/
     unit/                          Fast, isolated module tests

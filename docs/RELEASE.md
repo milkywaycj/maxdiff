@@ -101,13 +101,46 @@ to a Release manually via the GitHub UI.
 
 ## Code-signing the EXE
 
-The EXE is **not currently code-signed**, so Windows SmartScreen warns
-users about an "unknown publisher" on first run. Signing is deferred
-until user feedback justifies the cost. Options when we revisit:
+The EXE is **not code-signed**. Every option Microsoft offers for
+trusted Windows signing costs money on an ongoing basis, and this is
+a no-cost open-source project — there is no billing relationship to
+attach a certificate or signing service to. The standard
+open-source-on-Windows posture applies: SmartScreen will warn on
+first run, and the README walks users through dismissing the warning.
+This decision is intentional and final until somebody other than the
+maintainer wants to fund signing. Do not add signing scaffolding to
+`release.yml` without that funding in place; otherwise the workflow
+gains a step that depends on a secret nobody owns.
 
-- **Azure Trusted Signing** (~US$10/month, no hardware token) - lowest
-  friction, requires a Microsoft Entra tenant.
-- **EV code-signing cert** (~US$300-600/year + hardware token) -
-  bypasses SmartScreen warnings immediately.
-- **OV code-signing cert** (~US$200-400/year) - signs the binary but
-  SmartScreen needs reputation accumulation before warnings stop.
+## Re-vendoring Pyodide
+
+`scripts/vendor_pyodide.py` produces the runtime served from
+`docs/vendor/pyodide-<version>/`. Re-run it whenever the pinned
+`PYODIDE_VERSION` constant in `docs/analysis/index.html` changes, or
+whenever the vendored files need to be regenerated from scratch.
+
+```bash
+python scripts/vendor_pyodide.py                # incremental refresh
+python scripts/vendor_pyodide.py --force        # redownload every file
+python scripts/vendor_pyodide.py --verify-only  # CI-style hash check
+```
+
+The script reads `PYODIDE_VERSION` from the HTML, downloads
+`pyodide-lock.json`, walks the dependency closure of `micropip`,
+`numpy`, `pandas`, and `matplotlib`, fetches every file in that
+closure plus the four bootstrap artifacts, cross-verifies each wheel
+against the SHA-256 hash Pyodide itself pins in `pyodide-lock.json`,
+and writes a `MANIFEST.json` recording per-file SHA-384 hashes for
+later integrity checks. When bumping `PYODIDE_VERSION`:
+
+1. Update the constant in `docs/analysis/index.html`.
+2. Run `python scripts/vendor_pyodide.py` to populate the new
+   `docs/vendor/pyodide-<new-version>/` directory.
+3. Update `PYODIDE_BOOTSTRAP_SHA384` in the HTML to the new
+   `pyodide.js` hash (visible in the new `MANIFEST.json`).
+4. Delete the old `docs/vendor/pyodide-<old-version>/` directory.
+5. Run `pytest -q tests/unit/test_pyodide_vendor.py
+   tests/unit/test_pyodide_sri.py` to confirm everything is in sync.
+
+The vendored bundle is ~75 MiB. That is the price of having every byte
+the browser executes auditable in `git log` instead of trusting a CDN.

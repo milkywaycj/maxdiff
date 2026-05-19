@@ -16,6 +16,30 @@ between minor versions, but breaking changes are called out under
   eliminating roughly 570 lines of duplicated Python that previously
   lived inside the page as a `PYTHON_CODE` string. The browser and
   desktop tools now share one source of truth for the analysis math.
+- **Same-origin Pyodide runtime** under
+  `docs/vendor/pyodide-<version>/`. `scripts/vendor_pyodide.py`
+  re-fetches Pyodide and the dependency closure of `micropip`, `numpy`,
+  `pandas`, and `matplotlib` from `cdn.jsdelivr.net`, cross-verifies
+  every wheel against the SHA-256 hash pinned in `pyodide-lock.json`,
+  and writes a `MANIFEST.json` with per-file SHA-384 hashes. The
+  browser tool now points `PYODIDE_INDEX_URL` at the vendored path, so
+  every byte the user executes is served same-origin from GitHub Pages
+  and is auditable in `git log`. The CDN is no longer a trust boundary
+  at runtime. New tests at `tests/unit/test_pyodide_vendor.py` pin the
+  invariant: no jsdelivr / unpkg / cdnjs references in the shipped
+  HTML, MANIFEST.json must verify against on-disk bytes, and the
+  vendored closure must match `pyodide-lock.json`'s dependency graph.
+
+### Changed
+- `tests/unit/test_pyodide_sri.py` now verifies the pinned SHA-384
+  hash against the vendored `pyodide.js` instead of round-tripping to
+  the CDN. The check is offline and runs in the fast tier.
+
+### Documentation
+- `docs/RELEASE.md` documents the re-vendoring procedure and replaces
+  the deferred-signing options table with an explicit statement that
+  the EXE will remain unsigned; `README.md` walks first-time Windows
+  users through the SmartScreen dialog more carefully.
 
 ## [3.0.0.dev0] - 2026-05-19
 

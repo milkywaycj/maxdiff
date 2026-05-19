@@ -27,6 +27,11 @@ wheels/
 # documented override.
 !docs/wheels/
 !docs/wheels/**
+# Same rationale for the in-repo Pyodide runtime under docs/vendor/.
+# These files are vendored from cdn.jsdelivr.net so that the browser
+# tool is fully same-origin (see scripts/vendor_pyodide.py).
+!docs/vendor/
+!docs/vendor/**
 share/python-wheels/
 *.egg-info/
 .installed.cfg

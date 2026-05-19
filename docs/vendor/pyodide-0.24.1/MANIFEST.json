@@ -1,0 +1,104 @@
+{
+  "closure": [
+    "micropip",
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "packaging",
+    "python-dateutil",
+    "pytz",
+    "cycler",
+    "fonttools",
+    "kiwisolver",
+    "pillow",
+    "pyparsing",
+    "matplotlib-pyodide",
+    "six"
+  ],
+  "files": {
+    "Pillow-10.0.0-cp311-cp311-emscripten_3_1_45_wasm32.whl": {
+      "sha384_b64": "orrKIKeZbOoF6oUfbOQavBbLlgiMRUont260Kt7DuX8yUaCsTFVr1RxlrVVSN25b",
+      "size": 2996167
+    },
+    "cycler-0.11.0-py3-none-any.whl": {
+      "sha384_b64": "ch0BPlq52JjSxIKw4HFTnaF6J0nbMXPsCmbeMXtAl2KnpxIDPHb1JTAxTNV8h8n6",
+      "size": 18165
+    },
+    "fonttools-4.42.1-py3-none-any.whl": {
+      "sha384_b64": "jL4Hzw3jic+NCK4milUxhjJR0L5uoVy8O7O/g2nVdR4AUGqzZYbScOstOjmXE+oa",
+      "size": 4102284
+    },
+    "kiwisolver-1.4.4-cp311-cp311-emscripten_3_1_45_wasm32.whl": {
+      "sha384_b64": "HnY1zozH73vef6bt6xXuncf9COF76XYRoilACtN7fejpI3XuMPi1fbMwEe0f3PgH",
+      "size": 132286
+    },
+    "matplotlib-3.5.2-cp311-cp311-emscripten_3_1_45_wasm32.whl": {
+      "sha384_b64": "AqsfuVPaKgaHWoPcoMPswBYLQa/tw5XZHlcx5WTGLPQ/WERPVG5eeG6oj44R1HwL",
+      "size": 15746538
+    },
+    "matplotlib_pyodide-0.2.0-py3-none-any.whl": {
+      "sha384_b64": "7LPrjQXOWJ0mAz9xlLyaUFtGMCK2OKOK6AG+y5hnR2EH8mUmHhhvQkBzKNETXqTx",
+      "size": 76918
+    },
+    "micropip-0.5.0-py3-none-any.whl": {
+      "sha384_b64": "6ILjZiJSohTuRoDtOgXOM+DKS9RvGlv/lR7Q5leg8YeYJZXW9vEnTseotP+ick9R",
+      "size": 144917
+    },
+    "numpy-1.25.2-cp311-cp311-emscripten_3_1_45_wasm32.whl": {
+      "sha384_b64": "j0Bjrc5BUBZ5igatQAYq7xiBSJkZiWxrFPHRLYPnFISgtIVDfOq7I6Gsbi9QPjpN",
+      "size": 12537833
+    },
+    "packaging-23.1-py3-none-any.whl": {
+      "sha384_b64": "cpmpqi8Dn51y9vVvEGE4itvU3yYqZe6ALukP4ca01krtEoKHtolpJoIvvN1tbH+k",
+      "size": 157211
+    },
+    "pandas-1.5.3-cp311-cp311-emscripten_3_1_45_wasm32.whl": {
+      "sha384_b64": "tP1HhsGSn9Qmpag3qQohbfGe2WA95Thrt7qGSvdDx68nPOzWwcSsgS2T8RuuT7iU",
+      "size": 21550321
+    },
+    "pyodide-lock.json": {
+      "sha384_b64": "+qwIXbqoRuLI5pAIgZ77eeqj18PauB3OnWyIka1+Iiuglqnnfy3ak/uwdB9iH2Z/",
+      "size": 84412
+    },
+    "pyodide.asm.js": {
+      "sha384_b64": "bbVccbiWy7kcaGKsDcvo22KbPzpLgIsXeTo7TqRs+igpJIzra0Bia0e/o8XILG6A",
+      "size": 1157891
+    },
+    "pyodide.asm.wasm": {
+      "sha384_b64": "XmiypR2FYQ6+bKPYiwek6XzKP+9Y0X800XuxdKfS6X+49Z+wskdeoYiUB/rED0Vn",
+      "size": 8995509
+    },
+    "pyodide.js": {
+      "sha384_b64": "+R8PTzDXzivdjpxOqwVwRhPS9dlske7tKAjwj0O0Kr361gKY5d2Xe6Osl+faRLT7",
+      "size": 17417
+    },
+    "pyparsing-3.1.1-py3-none-any.whl": {
+      "sha384_b64": "qIfONUtPQJ+HbXsD3Ldw1ng7orXJKAjxS5x6KNt1fuIPiYTqO+pwSpGlKA0+4F8R",
+      "size": 396964
+    },
+    "python_dateutil-2.8.2-py2.py3-none-any.whl": {
+      "sha384_b64": "4s319Yp7VtOIn55Iwbs40xcuEWiyYjr7Ml9z0WUoEcglp6E+9T/tOLyd7xyLoMp1",
+      "size": 462271
+    },
+    "python_stdlib.zip": {
+      "sha384_b64": "IbVVGWrB5UFP7fnChsviaWnjJOMGAGuzadBJNnalhi6t1XiOVFkrG/e/8s6JSAnc",
+      "size": 8882369
+    },
+    "pytz-2023.3-py2.py3-none-any.whl": {
+      "sha384_b64": "rWnmpTH//fGgMYftDayOsr2CcY+9WKGfhmqAhiAyQICPq5wV5/0j66e30qJJsZIS",
+      "size": 1074345
+    },
+    "six-1.16.0-py2.py3-none-any.whl": {
+      "sha384_b64": "8oB21Seh42MiQQiT/j7bcEC3iFNYGUcE/Cr5Vo002fCXTAL21E0DNJjNrhrNG0hQ",
+      "size": 38737
+    }
+  },
+  "packages_root": [
+    "micropip",
+    "numpy",
+    "pandas",
+    "matplotlib"
+  ],
+  "pyodide_version": "v0.24.1",
+  "source": "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/"
+}
