@@ -15,18 +15,21 @@ Implementation notes:
   sum-to-zero on both the population mean and each respondent's
   utility vector. The prior is now symmetric across all items.
 
-* Phantom-item padding: tasks with fewer items than the maximum get
-  padded with item index 0. In practice this path is gated by
-  :func:`maxdiff.formats.check_errors` so it never fires in normal
-  use; the dead code is on the Phase 6 cleanup list.
+* Malformed-task handling: a task with fewer recognized items than
+  expected raises ``ValueError`` (Phase 6). The legacy implementation
+  silently padded with item index 0 here, which would have biased
+  item 0's worst-rate upward if any malformed data slipped past the
+  GUI's :func:`check_errors` gate.
 
 * Parallel chains: ``numpyro.set_host_device_count(4)`` is set at
-  import time but chains are run sequentially with ``num_chains=1``.
-  Phase 6 will switch to true parallel chains.
+  import time but chains are still run sequentially with
+  ``num_chains=1`` because the per-chain progress reporting in the
+  current API needs the loop. Switching to true parallel chains is
+  a future performance win.
 
-* R-hat thresholds: the convergence reporter calls 1.05-1.10
-  "Good" and 1.10-1.20 "Acceptable", which is too permissive.
-  Phase 6 (UX polish) tightens this to match Vehtari et al. 2021.
+* R-hat thresholds: tightened to follow Vehtari et al. 2021
+  (<1.01 "Excellent", <1.05 "Good", <1.10 "borderline",
+  otherwise "FAILED"). Phase 6 update.
 """
 
 from __future__ import annotations
@@ -134,25 +137,54 @@ class HierarchicalBayesMaxDiff:
                     if pd.notna(row[col]) and row[col] in self.item_to_idx:
                         task_items.append(self.item_to_idx[row[col]])
 
-                while len(task_items) < self.n_items_per_task:
-                    task_items.append(0)
+                # The legacy implementation silently padded short tasks
+                # with item index 0, which biased item 0's worst rate
+                # upward. With check_errors() called upstream this path
+                # is unreachable; if a caller bypasses check_errors
+                # and reaches this point with malformed data, raise
+                # rather than corrupt the analysis.
+                if len(task_items) < self.n_items_per_task:
+                    raise ValueError(
+                        f"Respondent {resp_id} task {task_idx + 1}: only "
+                        f"{len(task_items)} attribute cells contained a known "
+                        f"item (expected {self.n_items_per_task}). Run "
+                        f"check_errors() to surface the malformed rows before "
+                        f"fitting HB."
+                    )
 
                 items_in_tasks[resp_idx, task_idx, :] = task_items[: self.n_items_per_task]
 
-                best_global = self.item_to_idx.get(row[pos_col], 0)
-                worst_global = self.item_to_idx.get(row[neg_col], 0)
+                if row[pos_col] not in self.item_to_idx:
+                    raise ValueError(
+                        f"Respondent {resp_id} task {task_idx + 1}: "
+                        f"'Most' value {row[pos_col]!r} is not a known item."
+                    )
+                if row[neg_col] not in self.item_to_idx:
+                    raise ValueError(
+                        f"Respondent {resp_id} task {task_idx + 1}: "
+                        f"'Least' value {row[neg_col]!r} is not a known item."
+                    )
+
+                best_global = self.item_to_idx[row[pos_col]]
+                worst_global = self.item_to_idx[row[neg_col]]
 
                 try:
                     best_local_idx[resp_idx, task_idx] = task_items.index(best_global)
-                except ValueError:
-                    best_local_idx[resp_idx, task_idx] = 0
+                except ValueError as e:
+                    raise ValueError(
+                        f"Respondent {resp_id} task {task_idx + 1}: "
+                        f"'Most' item {row[pos_col]!r} not among the displayed "
+                        f"attributes for this task."
+                    ) from e
 
                 try:
                     worst_local_idx[resp_idx, task_idx] = task_items.index(worst_global)
-                except ValueError:
-                    worst_local_idx[resp_idx, task_idx] = (
-                        1 if best_local_idx[resp_idx, task_idx] == 0 else 0
-                    )
+                except ValueError as e:
+                    raise ValueError(
+                        f"Respondent {resp_id} task {task_idx + 1}: "
+                        f"'Least' item {row[neg_col]!r} not among the displayed "
+                        f"attributes for this task."
+                    ) from e
 
         self.items_in_tasks = jnp.array(items_in_tasks)
         self.best_local_idx = jnp.array(best_local_idx)
@@ -346,24 +378,28 @@ class HierarchicalBayesMaxDiff:
             max_rhat = float(np.max(r_hat))
             mean_rhat = float(np.mean(r_hat))
 
+            # Thresholds follow Vehtari et al. 2021 ("Rank-normalized
+            # split-Rhat..."): R-hat below 1.01 is excellent; below
+            # 1.05 is acceptable; >= 1.05 is a real warning.
             if log_callback:
-                if max_rhat < 1.05:
+                if max_rhat < 1.01:
                     log_callback(
                         f"  Convergence: Excellent (R-hat: mean={mean_rhat:.3f}, max={max_rhat:.3f})"
                     )
-                elif max_rhat < 1.1:
+                elif max_rhat < 1.05:
                     log_callback(
                         f"  Convergence: Good (R-hat: mean={mean_rhat:.3f}, max={max_rhat:.3f})"
                     )
-                elif max_rhat < 1.2:
+                elif max_rhat < 1.1:
                     log_callback(
-                        f"  Convergence: Acceptable (R-hat: mean={mean_rhat:.3f}, max={max_rhat:.3f})"
+                        f"  ⚠️ Convergence borderline (R-hat: mean={mean_rhat:.3f}, max={max_rhat:.3f}) - "
+                        "increase iterations"
                     )
                 else:
                     log_callback(
-                        f"  ⚠️ Convergence warning! R-hat: mean={mean_rhat:.3f}, max={max_rhat:.3f}"
+                        f"  ⚠️ Convergence FAILED (R-hat: mean={mean_rhat:.3f}, max={max_rhat:.3f}) - "
+                        "results may be unreliable; rerun with more iterations or chains"
                     )
-                    log_callback("     Consider running more iterations or checking the model.")
 
         except Exception as e:
             if log_callback:

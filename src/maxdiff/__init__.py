@@ -47,6 +47,7 @@ from maxdiff.formats import (
     get_column_names,
 )
 from maxdiff.hb import HAS_NUMPYRO, NUMPYRO_ERROR, HierarchicalBayesMaxDiff
+from maxdiff.io import read_tabular_file
 
 __all__ = [
     "HAS_NUMPYRO",
@@ -65,4 +66,5 @@ __all__ = [
     "get_column_names",
     "perform_maxdiff_analysis",
     "process_color_input",
+    "read_tabular_file",
 ]

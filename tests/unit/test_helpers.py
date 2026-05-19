@@ -51,28 +51,24 @@ class TestProcessColorInput:
         assert legacy.process_color_input("not_a_color") is None
         assert legacy.process_color_input("12345") is None  # 5 chars, neither hex nor name
 
-    def test_returns_hash_prefix_input_unchanged_even_if_invalid_hex(self, legacy) -> None:
-        """Pin the CURRENT (buggy) behavior of process_color_input.
-
-        The function returns any string starting with ``#`` unchanged,
-        without validating the remaining characters are valid hex. The
-        ``test_should_reject_invalid_hex_after_hash`` test below
-        documents the corrected behavior we want. Phase 6 fixes the
-        bug; when it does, the xfail flips to xpass and (per the
-        suite's xfail_strict setting) CI will fail, prompting both
-        tests to be updated together.
+    def test_rejects_hash_prefix_with_invalid_hex_characters(self, legacy) -> None:
+        """Phase 6 fix: ``#GGGGGG`` and ``#zzz`` were previously
+        accepted because the implementation only checked for a leading
+        ``#`` without validating the trailing characters. They now
+        return ``None``.
         """
-        assert legacy.process_color_input("#GGGGGG") == "#GGGGGG"
-        assert legacy.process_color_input("#zzz") == "#zzz"
-
-    @pytest.mark.xfail(
-        reason="Bug: process_color_input accepts any string starting with '#' without "
-        "validating hex characters. Fix scheduled for Phase 6.",
-        strict=True,
-    )
-    def test_should_reject_invalid_hex_after_hash(self, legacy) -> None:
         assert legacy.process_color_input("#GGGGGG") is None
         assert legacy.process_color_input("#zzz") is None
+        assert legacy.process_color_input("#") is None
+
+    def test_accepts_hash_prefix_with_valid_hex(self, legacy) -> None:
+        # 3-character, 6-character, and 8-character (RGBA) hex are all valid.
+        assert legacy.process_color_input("#abc") == "#abc"
+        assert legacy.process_color_input("#abcdef") == "#abcdef"
+        assert legacy.process_color_input("#abcdef12") == "#abcdef12"
+        # Wrong length must be rejected.
+        assert legacy.process_color_input("#abcd") is None
+        assert legacy.process_color_input("#abcde") is None
 
     def test_returns_none_for_empty_input(self, legacy) -> None:
         assert legacy.process_color_input("") is None

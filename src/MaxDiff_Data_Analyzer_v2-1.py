@@ -29,6 +29,7 @@ from maxdiff import (
     check_errors,
     format_display_report,
     process_color_input,
+    read_tabular_file,
 )
 
 # Set appearance mode and color theme
@@ -1414,10 +1415,7 @@ Use "Browse" to auto-detect format and convert if needed."""
         if not filename:
             return
         try:
-            if filename.endswith(".xlsx"):
-                df = pd.read_excel(filename)
-            else:
-                df = pd.read_csv(filename)
+            df = read_tabular_file(filename)
             self.maxdiff_file = filename
             detected_format, message = DataFormatDetector.detect_format(df)
             DataPreviewWindow(self, df, detected_format, message, self.set_maxdiff_data)
@@ -1501,16 +1499,21 @@ Use "Browse" to auto-detect format and convert if needed."""
         import subprocess
 
         p = Path("results")
-        if p.exists():
-            system = platform.system()
-            if system == "Windows":
-                subprocess.Popen(f'explorer "{p.absolute()}"')
-            elif system == "Darwin":
-                subprocess.Popen(["open", str(p.absolute())])
-            else:
-                subprocess.Popen(["xdg-open", str(p.absolute())])
-        else:
+        if not p.exists():
             messagebox.showwarning("Warning", "Run analysis first!")
+            return
+
+        # Always use list form for subprocess to avoid shell injection /
+        # quoting issues when the working directory contains spaces or
+        # other shell metacharacters.
+        system = platform.system()
+        path_str = str(p.absolute())
+        if system == "Windows":
+            subprocess.Popen(["explorer", path_str])
+        elif system == "Darwin":
+            subprocess.Popen(["open", path_str])
+        else:
+            subprocess.Popen(["xdg-open", path_str])
 
     def run_analysis(self):
         if self.maxdiff_df is None:
@@ -1760,10 +1763,7 @@ Use "Browse" to auto-detect format and convert if needed."""
             if self.segment_file:
                 self.log("\nProcessing segments...")
                 try:
-                    if self.segment_file.endswith(".xlsx"):
-                        segment_df = pd.read_excel(self.segment_file)
-                    else:
-                        segment_df = pd.read_csv(self.segment_file)
+                    segment_df = read_tabular_file(self.segment_file)
 
                     def seg_progress(v):
                         self.update_progress(0.75 + v * 0.2, f"Segments: {int(v * 100)}%")

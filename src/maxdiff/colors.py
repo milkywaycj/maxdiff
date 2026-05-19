@@ -1,18 +1,25 @@
 """Color input parsing for chart styling.
 
 The desktop GUI lets the user type a color into a text input. This
-helper accepts the common forms (CSS4 named color, ``#RRGGBB`` hex,
-or 6-char hex without the leading ``#``) and returns a canonical
-matplotlib-compatible string, or ``None`` for unrecognized input.
+helper accepts the common forms (CSS4 named color, ``#RRGGBB`` /
+``#RGB`` hex, or 6-char hex without the leading ``#``) and returns
+a canonical matplotlib-compatible string, or ``None`` for
+unrecognized input.
 
-Known bug pinned by an xfail test in tests/unit/test_helpers.py: any
-string beginning with ``#`` is returned unchanged without validating
-the trailing characters are valid hex. Fix scheduled for Phase 6.
+Phase 6 fix: previously any string beginning with ``#`` was returned
+unchanged, so ``#GGGGGG`` or ``#zzz`` were accepted as "valid"
+even though they could not be rendered. Hex strings are now
+validated against the expected character set and length.
 """
 
 from __future__ import annotations
 
+import re
+
 import matplotlib.colors as mcolors
+
+# Accept the three RFC-ish hex forms: #RGB, #RRGGBB, #RRGGBBAA.
+_HEX_RE = re.compile(r"^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
 
 
 def process_color_input(color: object) -> str | None:
@@ -24,10 +31,13 @@ def process_color_input(color: object) -> str | None:
     if not color:
         return None
     color_str = str(color).strip()
+    if not color_str:
+        return None
     if color_str.lower() in mcolors.CSS4_COLORS:
         return color_str.lower()
     if color_str.startswith("#"):
-        return color_str
+        # Hash-prefixed string: must match a recognized hex pattern.
+        return color_str if _HEX_RE.match(color_str) else None
     if len(color_str) == 6 and all(c in "0123456789ABCDEFabcdef" for c in color_str):
         return f"#{color_str}"
     try:
