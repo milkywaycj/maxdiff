@@ -31,20 +31,27 @@ Hierarchical Bayes is bundled — no extra install needed.
 
 **First run on Windows.** The EXE is not code-signed (this is a free
 open-source project and Microsoft does not offer a free signing
-option), so Windows SmartScreen will show a blue "Windows protected
-your PC" dialog the first time you launch it. This is expected for
-unsigned open-source binaries and does not mean the EXE is unsafe;
-the source is in this repository and CI builds it from a tagged
-commit. To run it:
+option), so Windows SmartScreen will warn you twice: once during the
+download in your browser, and again when you launch the EXE. Both
+warnings are expected for unsigned open-source binaries and don't
+mean the EXE is unsafe — the source is in this repository and CI
+builds it from a tagged commit.
 
-1. Click the small **More info** link in the SmartScreen dialog.
-2. Click the **Run anyway** button that appears underneath.
+1. **In the browser.** Edge (and other Chromium-based browsers) show
+   a "Make sure you trust ... before you open it" dialog in the
+   Downloads panel with **Cancel** and **Delete** buttons. Click the
+   small chevron next to **Delete** and choose **Keep anyway**. (If
+   the dialog also offers **Report this app as safe**, that's
+   optional — it just submits a reputation hint to Microsoft.)
+2. **At launch.** Double-clicking the EXE produces a blue "Windows
+   protected your PC" SmartScreen dialog. Click the small **More
+   info** link, then the **Run anyway** button that appears.
 
 SmartScreen remembers the decision after the first run. The EXE
 launches a customtkinter GUI; on launch it probes for `jax` /
 `numpyro` and enables the Hierarchical Bayes option if they are
 importable. The bundled EXE always has them. If you'd rather avoid
-the dialog entirely, the `pip install maxdiff` path below works on
+the dialogs entirely, the `pip install maxdiff` path below works on
 any platform with Python and has no SmartScreen interaction.
 
 ### Python package
