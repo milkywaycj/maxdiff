@@ -24,9 +24,16 @@ classifiers = [
 ]
 dynamic = ["version"]
 dependencies = [
-    "pandas>=2.0,<3.0",
+    # Lower bounds chosen so the wheel is installable into Pyodide
+    # 0.24.x. Pyodide 0.24.1 ships pandas 1.5.3, matplotlib 3.5.2,
+    # numpy 1.25.x; we need our wheel to satisfy those exact installs.
+    # The desktop install uses whatever pip resolves, which in
+    # practice is much newer. The maxdiff source uses only pandas 1.5+
+    # / matplotlib 3.5+ APIs. If we ever bump Pyodide, revisit these
+    # bounds and rebuild the wheel.
+    "pandas>=1.5,<3.0",
     "numpy>=1.24,<3.0",
-    "matplotlib>=3.6,<4.0",
+    "matplotlib>=3.5,<4.0",
 ]
 
 [project.optional-dependencies]

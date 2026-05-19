@@ -309,6 +309,43 @@ class TestCalculateDisplayStatistics:
 # ----------------------------------------------------------------------
 
 
+class TestPerformMaxDiffAnalysisDtypes:
+    """perform_maxdiff_analysis must work on integer arrays of any
+    Python-default dtype.
+
+    Regression: Pyodide / WebAssembly numpy refuses to cast int64 to
+    int32 inside ``np.bincount``. The fix is to use ``np.intp`` (the
+    machine-native integer) internally; on 64-bit CPython this is a
+    no-op, on Pyodide it converts to int32. This test pins the
+    dtype-tolerance contract so it isn't accidentally regressed.
+    """
+
+    def test_accepts_int64_inputs(self, legacy) -> None:
+        # 4 items, 3 tasks, 3 items per task.
+        attrs = np.array(
+            [[0, 1, 2], [1, 2, 3], [0, 2, 3]],
+            dtype=np.int64,
+        )
+        pos = np.array([0, 1, 2], dtype=np.int64)
+        neg = np.array([2, 3, 0], dtype=np.int64)
+        unique = np.array(["A", "B", "C", "D"])
+        result = legacy.perform_maxdiff_analysis(attrs, pos, neg, unique)
+        assert list(result["Item"]) == ["A", "B", "C", "D"]
+        # No exception is the headline assertion; sanity-check values.
+        assert (result["Score"] != 0).any()
+
+    def test_accepts_int32_inputs(self, legacy) -> None:
+        attrs = np.array(
+            [[0, 1, 2], [1, 2, 3], [0, 2, 3]],
+            dtype=np.int32,
+        )
+        pos = np.array([0, 1, 2], dtype=np.int32)
+        neg = np.array([2, 3, 0], dtype=np.int32)
+        unique = np.array(["A", "B", "C", "D"])
+        result = legacy.perform_maxdiff_analysis(attrs, pos, neg, unique)
+        assert list(result["Item"]) == ["A", "B", "C", "D"]
+
+
 class TestCountAnalysisRecoversOrdering:
     """If the synthetic generator and count-analysis are both correct,
     the rank of items by Score should match the rank by true utility

@@ -20,6 +20,13 @@ parts/
 sdist/
 var/
 wheels/
+# Re-include the in-repo wheel directory under docs/. This is the
+# same-origin source the browser tool reads via micropip; it must be
+# committed to be served by GitHub Pages. The blanket `wheels/`
+# rule above is the standard Python build-output ignore; this is the
+# documented override.
+!docs/wheels/
+!docs/wheels/**
 share/python-wheels/
 *.egg-info/
 .installed.cfg

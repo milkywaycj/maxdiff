@@ -120,11 +120,17 @@ def perform_maxdiff_analysis(
     ``(n_tasks, n_items_per_task)`` array of item indices,
     ``pos_data`` / ``neg_data`` are length-``n_tasks`` arrays of
     item indices for the best / worst choices.
+
+    The bincount inputs are cast to ``np.intp`` (machine-native
+    integer) before counting. On 64-bit CPython this is int64 and
+    a no-op; on Pyodide / WebAssembly it's int32, and the cast is
+    required because Pyodide's numpy refuses to silently downcast
+    int64 -> int32 in bincount.
     """
     n_attributes = len(unique_attributes)
     display_count = np.sum(attribute_data[:, :, None] == np.arange(n_attributes), axis=(0, 1))
-    pos_count = np.bincount(pos_data, minlength=n_attributes)
-    neg_count = np.bincount(neg_data, minlength=n_attributes)
+    pos_count = np.bincount(np.asarray(pos_data, dtype=np.intp), minlength=n_attributes)
+    neg_count = np.bincount(np.asarray(neg_data, dtype=np.intp), minlength=n_attributes)
 
     with np.errstate(divide="ignore", invalid="ignore"):
         score = np.where(
