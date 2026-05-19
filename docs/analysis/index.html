@@ -423,6 +423,11 @@
             font-size: 0.9rem;
             line-height: 1.6;
         }
+
+        .info-box a {
+            color: #3b5bdb;
+            font-weight: 600;
+        }
         
         .download-buttons {
             display: flex;
@@ -491,10 +496,17 @@
             <h1>📊 MaxDiff Analysis Tool</h1>
             <p>by Carl J</p>
             <br>
-            <p>Browser-based analysis • Your data stays local and private</p>
+            <p>Browser-based count/bootstrap analysis • Your data stays local and private</p>
         </div>
         
         <div class="content">
+            <div class="section">
+                <div class="section-title">🖥️ Need the Desktop Version?</div>
+                <div class="info-box" style="margin-bottom: 0; background: #fff3cd; border-color: #ffc107;">
+                    <p>Count-based analysis with bootstrap confidence intervals is the recommended default for most MaxDiff studies. Use the Windows desktop version from <a href="https://github.com/milkywaycj/maxdiff/releases/latest" target="_blank" rel="noopener">GitHub Releases</a> when you want a local Windows app, or when you specifically need Hierarchical Bayes (HB), individual-level utilities, or larger model-based follow-up analysis.</p>
+                </div>
+            </div>
+
             <!-- Data Format Guide -->
             <div class="section">
                 <div class="section-title collapsible" onclick="toggleCollapsible(this)">
@@ -589,7 +601,7 @@
                     </div>
                     
                     <div class="info-box" style="margin-top: 15px; background: #fff3cd; border-color: #ffc107;">
-                        <p><strong>Note:</strong> About the analysis method: This tool uses count-based analysis with bootstrap confidence intervals. Research shows count-based scores correlate r = 0.99+ with Hierarchical Bayes utilities for standard balanced designs—you'll get the same rankings with greater transparency. HB is only necessary when you need individual-level utilities for follow-up analyses like latent class segmentation, TURF optimization, or personalization. Hierarchical Bayes analysis is not available in the browser version of this tool.</p>
+                        <p><strong>Analysis method:</strong> Count-based analysis with optional bootstrap confidence intervals is the recommended default for most MaxDiff studies. For standard balanced designs, count-based scores usually give the same practical rankings with greater transparency. Hierarchical Bayes is only necessary when you need individual-level utilities for follow-up analyses like latent class segmentation, TURF optimization, or personalization. HB is available in the <a href="https://github.com/milkywaycj/maxdiff/releases/latest" target="_blank" rel="noopener">Windows desktop version</a>, not in this browser version.</p>
                     </div>
                 </div>
             </div>
@@ -1415,41 +1427,61 @@ self.onmessage = async (e) => {
         
         // Parse CSV to array of objects
         function parseCSV(text) {
-            const lines = text.trim().split('\n');
-            const headers = parseCSVLine(lines[0]);
-            const data = [];
-            
-            for (let i = 1; i < lines.length; i++) {
-                if (lines[i].trim()) {
-                    const values = parseCSVLine(lines[i]);
-                    const row = {};
-                    headers.forEach((header, j) => {
-                        row[header] = values[j] || '';
-                    });
-                    data.push(row);
-                }
-            }
-            return data;
-        }
-        
-        function parseCSVLine(line) {
-            const result = [];
+            const rows = [];
+            let row = [];
             let current = '';
             let inQuotes = false;
-            
-            for (let i = 0; i < line.length; i++) {
-                const char = line[i];
+
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const nextChar = text[i + 1];
+
                 if (char === '"') {
-                    inQuotes = !inQuotes;
+                    if (inQuotes && nextChar === '"') {
+                        current += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
                 } else if (char === ',' && !inQuotes) {
-                    result.push(current.trim());
+                    row.push(current.trim());
                     current = '';
+                } else if ((char === '\n' || char === '\r') && !inQuotes) {
+                    if (char === '\r' && nextChar === '\n') {
+                        i++;
+                    }
+                    row.push(current.trim());
+                    current = '';
+                    if (row.some(value => value !== '')) {
+                        rows.push(row);
+                    }
+                    row = [];
                 } else {
                     current += char;
                 }
             }
-            result.push(current.trim());
-            return result;
+
+            if (inQuotes) {
+                throw new Error('CSV has an unclosed quoted field');
+            }
+
+            if (current !== '' || row.length > 0) {
+                row.push(current.trim());
+                if (row.some(value => value !== '')) {
+                    rows.push(row);
+                }
+            }
+
+            if (rows.length === 0) return [];
+
+            const headers = rows[0];
+            return rows.slice(1).map(values => {
+                const record = {};
+                headers.forEach((header, j) => {
+                    record[header] = values[j] || '';
+                });
+                return record;
+            });
         }
         
         // File handling
@@ -1492,7 +1524,7 @@ self.onmessage = async (e) => {
                 
                 document.getElementById('maxdiffStatus').textContent = '✓ Ready';
                 document.getElementById('maxdiffStatus').className = 'status status-ready';
-                document.getElementById('dataInfo').innerHTML = 
+                document.getElementById('dataInfo').textContent =
                     `📊 ${participants} participants, ${data.length} tasks, ${items.length} items, ${attrCols.length} per task`;
                 document.getElementById('runBtn').disabled = !pyodideReady;
                 
@@ -1534,7 +1566,7 @@ self.onmessage = async (e) => {
                 
                 document.getElementById('segmentStatus').textContent = '✓ Loaded';
                 document.getElementById('segmentStatus').style.color = '#28a745';
-                document.getElementById('segmentInfo').innerHTML = 
+                document.getElementById('segmentInfo').textContent =
                     `📊 ${data.length} respondents, ${segmentCols.length} segment variable(s): ${segmentCols.join(', ')}`;
                 
                 log(`✓ Segment file loaded: ${segmentCols.length} variables (${segmentCols.join(', ')})`, 'success');
@@ -1552,7 +1584,7 @@ self.onmessage = async (e) => {
             document.getElementById('segmentFileName').textContent = 'No file selected (optional)';
             document.getElementById('segmentStatus').textContent = 'Optional';
             document.getElementById('segmentStatus').style.color = '#6c757d';
-            document.getElementById('segmentInfo').innerHTML = '';
+            document.getElementById('segmentInfo').textContent = '';
             segmentDataJson = null;
         }
         
@@ -1598,7 +1630,11 @@ self.onmessage = async (e) => {
             document.getElementById('resultsContainer').classList.add('show');
             
             const dropdown = document.getElementById('segmentDropdown');
-            dropdown.innerHTML = '<option value="overall">Overall (All Respondents)</option>';
+            dropdown.replaceChildren();
+            const overallOption = document.createElement('option');
+            overallOption.value = 'overall';
+            overallOption.textContent = 'Overall (All Respondents)';
+            dropdown.appendChild(overallOption);
             
             const segmentColumns = analysisResults.segment_columns || [];
             const segments = analysisResults.segments || {};
@@ -1611,7 +1647,10 @@ self.onmessage = async (e) => {
                         hasSegments = true;
                         const optionValue = `${column}|||${segValue}`;
                         const optionText = `${column}: ${segValue} (n=${segments[column][segValue].sample_size})`;
-                        dropdown.innerHTML += `<option value="${optionValue}">${optionText}</option>`;
+                        const option = document.createElement('option');
+                        option.value = optionValue;
+                        option.textContent = optionText;
+                        dropdown.appendChild(option);
                     }
                 }
             }
@@ -1645,19 +1684,34 @@ self.onmessage = async (e) => {
             
             document.getElementById('currentSegmentInfo').textContent = infoText;
             
-            document.getElementById('scoresChart').innerHTML = 
-                `<img src="data:image/png;base64,${data.scores_chart}" alt="Scores Chart">`;
-            document.getElementById('frequenciesChart').innerHTML = 
-                `<img src="data:image/png;base64,${data.frequencies_chart}" alt="Frequencies Chart">`;
-            document.getElementById('balanceChart').innerHTML = 
-                `<img src="data:image/png;base64,${data.balance_chart}" alt="Balance Chart">`;
+            renderChart('scoresChart', data.scores_chart, 'Scores Chart');
+            renderChart('frequenciesChart', data.frequencies_chart, 'Frequencies Chart');
+            renderChart('balanceChart', data.balance_chart, 'Balance Chart');
             
-            document.getElementById('scoresTable').innerHTML = createTable(data.scores_data);
-            document.getElementById('displayTable').innerHTML = createTable(data.display_data);
+            renderTable('scoresTable', data.scores_data);
+            renderTable('displayTable', data.display_data);
         }
-        
-        function createTable(data) {
-            if (!data || data.length === 0) return '<p>No data</p>';
+
+        function renderChart(containerId, base64Image, altText) {
+            const container = document.getElementById(containerId);
+            container.replaceChildren();
+
+            const img = document.createElement('img');
+            img.src = `data:image/png;base64,${base64Image}`;
+            img.alt = altText;
+            container.appendChild(img);
+        }
+
+        function renderTable(containerId, data) {
+            const container = document.getElementById(containerId);
+            container.replaceChildren();
+
+            if (!data || data.length === 0) {
+                const empty = document.createElement('p');
+                empty.textContent = 'No data';
+                container.appendChild(empty);
+                return;
+            }
             
             if (data instanceof Map) {
                 data = Array.from(data.values());
@@ -1671,27 +1725,39 @@ self.onmessage = async (e) => {
             });
             
             const headers = Object.keys(data[0]);
-            let html = '<div style="overflow-x: auto;"><table class="data-table"><thead><tr>';
-            
-            headers.forEach(h => {
-                html += `<th>${h}</th>`;
+            const wrapper = document.createElement('div');
+            wrapper.style.overflowX = 'auto';
+
+            const table = document.createElement('table');
+            table.className = 'data-table';
+
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                headerRow.appendChild(th);
             });
-            html += '</tr></thead><tbody>';
-            
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
             data.forEach(row => {
-                html += '<tr>';
-                headers.forEach(h => {
-                    let val = row[h];
-                    if (typeof val === 'number') {
-                        val = val.toFixed(2);
+                const tr = document.createElement('tr');
+                headers.forEach(header => {
+                    const td = document.createElement('td');
+                    let value = row[header];
+                    if (typeof value === 'number') {
+                        value = value.toFixed(2);
                     }
-                    html += `<td>${val}</td>`;
+                    td.textContent = value ?? '';
+                    tr.appendChild(td);
                 });
-                html += '</tr>';
+                tbody.appendChild(tr);
             });
-            
-            html += '</tbody></table></div>';
-            return html;
+            table.appendChild(tbody);
+            wrapper.appendChild(table);
+            container.appendChild(wrapper);
         }
         
         function showTab(tabName) {
