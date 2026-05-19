@@ -10,60 +10,7 @@ between minor versions, but breaking changes are called out under
 
 ## [Unreleased]
 
-### Added
-- Browser analysis tool (`docs/analysis/index.html`) now consumes the
-  `maxdiff` wheel via Pyodide + micropip from `docs/wheels/<version>/`,
-  eliminating roughly 570 lines of duplicated Python that previously
-  lived inside the page as a `PYTHON_CODE` string. The browser and
-  desktop tools now share one source of truth for the analysis math.
-- **Same-origin Pyodide runtime** under
-  `docs/vendor/pyodide-<version>/`. `scripts/vendor_pyodide.py`
-  re-fetches Pyodide and the dependency closure of `micropip`, `numpy`,
-  `pandas`, and `matplotlib` from `cdn.jsdelivr.net`, cross-verifies
-  every wheel against the SHA-256 hash pinned in `pyodide-lock.json`,
-  and writes a `MANIFEST.json` with per-file SHA-384 hashes. The
-  browser tool now points `PYODIDE_INDEX_URL` at the vendored path, so
-  every byte the user executes is served same-origin from GitHub Pages
-  and is auditable in `git log`. The CDN is no longer a trust boundary
-  at runtime. New tests at `tests/unit/test_pyodide_vendor.py` pin the
-  invariant: no jsdelivr / unpkg / cdnjs references in the shipped
-  HTML, MANIFEST.json must verify against on-disk bytes, and the
-  vendored closure must match `pyodide-lock.json`'s dependency graph.
-
-### Changed
-- `tests/unit/test_pyodide_sri.py` now verifies the pinned SHA-384
-  hash against the vendored `pyodide.js` instead of round-tripping to
-  the CDN. The check is offline and runs in the fast tier.
-
-### Documentation
-- `docs/RELEASE.md` documents the re-vendoring procedure and replaces
-  the deferred-signing options table with an explicit statement that
-  the EXE will remain unsigned; `README.md` walks first-time Windows
-  users through the SmartScreen dialog more carefully.
-
-### Added (Phase 11)
-- **HB regression goldens** at
-  `tests/golden/test_hb_goldens.py`. A small fixed-seed HB fit
-  (N=100, 500+500 MCMC iterations, 1 chain) pins the population Score
-  column and the credible-interval widths to checked-in CSVs in
-  `tests/golden/expected/hb_*.csv` with generous tolerances
-  (`float_tol=0.1` and `0.15` respectively) sized for JAX-version
-  drift, not MCMC sampling noise. Catches HB regressions that the
-  recovery test (which uses a 0.5 tolerance against ground truth)
-  would miss. ~9-10s, marked `hb` / `slow` / `golden`; skips when
-  numpyro / jax is unavailable.
-
-### Added (Phase 12)
-- **PyPI Trusted Publishing** wired into `.github/workflows/release.yml`.
-  The publish step uses OIDC (no long-lived token) and is gated on the
-  GitHub repository variable `MAXDIFF_PYPI_PUBLISH` so it remains inert
-  until the maintainer completes the one-time PyPI-side setup
-  documented in `docs/RELEASE.md`. The `release` job now scopes
-  `contents: write` and `id-token: write` per-job rather than at the
-  workflow level, so the build jobs run with the default read-only
-  GITHUB_TOKEN.
-
-## [3.0.0.dev0] - 2026-05-19
+## [3.0.0] - 2026-05-19
 
 This is the first formal release of the `maxdiff` Python package and
 the first end-to-end versioned snapshot of the project. The previous
@@ -73,6 +20,35 @@ an installable library and the browser tool is a thin shell around
 the same library.
 
 ### Added
+- **Same-origin Pyodide runtime** under
+  `docs/vendor/pyodide-<version>/`. `scripts/vendor_pyodide.py`
+  re-fetches Pyodide and the dependency closure of `micropip`, `numpy`,
+  `pandas`, and `matplotlib` from `cdn.jsdelivr.net`, cross-verifies
+  every wheel against the SHA-256 hash pinned in `pyodide-lock.json`,
+  and writes a `MANIFEST.json` with per-file SHA-384 hashes. The
+  browser tool's `PYODIDE_INDEX_URL` points at the vendored path, so
+  every byte the user executes is served same-origin from GitHub Pages
+  and is auditable in `git log`. The CDN is no longer a trust boundary
+  at runtime. Tests at `tests/unit/test_pyodide_vendor.py` pin the
+  invariant: no jsdelivr / unpkg / cdnjs references in the shipped
+  HTML, the MANIFEST must verify against on-disk bytes, and the
+  vendored closure must match `pyodide-lock.json`'s dependency graph.
+- **HB regression goldens** at
+  `tests/golden/test_hb_goldens.py`. A small fixed-seed HB fit
+  (N=100, 500+500 MCMC iterations, 1 chain) pins the population Score
+  column and the credible-interval widths to checked-in CSVs with
+  generous tolerances (`float_tol=0.1` and `0.15`) sized for
+  JAX-version drift, not MCMC sampling noise. Catches HB regressions
+  that the recovery test (which uses a 0.5 tolerance against ground
+  truth) would miss. ~10s, marked `hb` / `slow` / `golden`; skips when
+  numpyro / jax is unavailable.
+- **PyPI Trusted Publishing** wired into `.github/workflows/release.yml`.
+  The publish step uses OIDC (no long-lived token) and is gated on the
+  repo variable `MAXDIFF_PYPI_PUBLISH` so it remains inert until the
+  maintainer completes the one-time PyPI-side setup documented in
+  `docs/RELEASE.md`. The `release` job scopes `contents: write` and
+  `id-token: write` per-job; build jobs stay on the default read-only
+  GITHUB_TOKEN.
 - **Installable Python package** at `src/maxdiff/` with submodules
   `count`, `bootstrap`, `correlation`, `display`, `formats`, `colors`,
   `hb`, `io`, `plotting`, and a public API re-exported from the
@@ -197,14 +173,15 @@ the same library.
   picks from the most-frequent remaining items first.
 
 ### Security
-- **Pyodide bootstrap is now SRI-verified.** `importScripts()` does
-  not honor subresource integrity, so a compromised CDN response
-  would previously have executed unchecked. The bootstrap is fetched
-  on the main thread, its SHA-384 digest is verified via
-  `crypto.subtle` against a pinned constant, and only the verified
-  bytes are evaluated. WASM, stdlib, and package fetches initiated by
-  Pyodide itself remain CDN-served; full vendoring is tracked as a
-  future hardening item.
+- **Pyodide and its full dependency closure are vendored same-origin**
+  under `docs/vendor/pyodide-<version>/`. The CDN is no longer a trust
+  boundary at runtime — the GitHub Pages TLS boundary now covers
+  every byte the browser tool executes, including WASM, stdlib, and
+  every wheel `micropip` loads. The pinned SHA-384 check on the
+  bootstrap loader remains as defense-in-depth against tampering
+  with the vendored copy itself. (Supersedes the SRI-only posture in
+  earlier internal builds, which left WASM / stdlib / wheels
+  CDN-served.)
 - **CSV input validation in the browser tool** rejects unclosed
   quoted fields rather than producing silent data corruption.
 
