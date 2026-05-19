@@ -1,0 +1,7 @@
+Item,% Selected as Best,% Unselected,% Selected as Worst,Score
+Item 1,78.0,21.0,1.0,77.0
+Item 2,63.0,34.0,3.0,60.0
+Item 3,35.0,50.0,15.0,20.0
+Item 4,20.0,49.0,31.0,-11.0
+Item 5,2.0,34.0,64.0,-62.0
+Item 6,2.0,12.0,86.0,-84.0

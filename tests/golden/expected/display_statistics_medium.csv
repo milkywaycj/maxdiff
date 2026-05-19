@@ -1,0 +1,9 @@
+Item,Times Displayed,Times Selected Best,Times Selected Worst,Times Unselected,Best Rate,Worst Rate
+Item 1,400,310,1,89,0.775,0.0025
+Item 2,400,182,4,214,0.455,0.01
+Item 3,400,149,21,230,0.3725,0.0525
+Item 4,400,68,57,275,0.17,0.1425
+Item 5,400,39,69,292,0.0975,0.1725
+Item 6,400,26,160,214,0.065,0.4
+Item 7,400,17,186,197,0.0425,0.465
+Item 8,400,9,302,89,0.0225,0.755
