@@ -38,6 +38,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
 
+      - name: Install Playwright browser (Chromium)
+        # tests/e2e/ drives Chromium via pytest-playwright. The pip
+        # package installs the plugin but not the browser; the browser
+        # is downloaded on demand by `playwright install`. Without it
+        # the e2e fixtures error out at fixture-setup time and every
+        # CI job fails.
+        run: |
+          python -m playwright install --with-deps chromium
+
       - name: Install optional HB dependencies (Linux only)
         # JAX wheels on Windows are only published as CPU-only for some
         # Python versions and the install is slow. Run HB tests on

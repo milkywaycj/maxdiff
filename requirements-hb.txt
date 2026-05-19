@@ -1,2 +1,9 @@
-jax
-numpyro
+# JAX and NumPyro versions are bounded so the HB goldens
+# (tests/golden/test_hb_goldens.py) reproduce within tolerance on CI.
+# The MCMC kernel changed shape across major JAX releases, so a wider
+# range here would mean regenerating goldens on every dep upgrade.
+# Bumping the upper bound requires running
+# `pytest --update-goldens tests/golden/test_hb_goldens.py` on the new
+# versions and committing the new CSVs together with the bump.
+jax>=0.4,<0.5
+numpyro>=0.13,<0.20
