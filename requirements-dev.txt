@@ -1,0 +1,18 @@
+# Developer / test environment dependencies.
+#
+# Install with:
+#   pip install -r requirements.txt -r requirements-dev.txt
+#
+# Optionally also:
+#   pip install -r requirements-hb.txt
+#
+# These are not pinned to exact versions because the project supports a
+# range of Python and platform combinations. CI installs the latest
+# compatible versions and locks them per-build via the pip cache.
+
+pytest>=8.0
+pytest-cov>=5.0
+pytest-xdist>=3.5
+hypothesis>=6.100
+coverage>=7.4
+ruff>=0.5

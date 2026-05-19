@@ -1,0 +1,108 @@
+# Phase 1 configuration: tooling only.
+#
+# The package itself (currently src/MaxDiff_Data_Analyzer_v2-1.py) is not
+# yet installable as a Python distribution. That will be addressed when
+# the analysis core is extracted into a maxdiff package (Phase 3). For
+# now, this file declares only test, lint, and coverage configuration so
+# that CI and contributors have a single source of truth for tool
+# settings.
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = [
+    "-ra",
+    "--strict-config",
+    "--strict-markers",
+    "--showlocals",
+    "--tb=short",
+]
+xfail_strict = true
+filterwarnings = [
+    # Pytest prepends each filter entry to Python's filter list, so the
+    # LAST entry in this list is consulted FIRST. The catch-all "error"
+    # therefore comes FIRST (added first, ends up at the back of the
+    # active filter list, lowest priority), and specific overrides are
+    # listed BELOW it (added later, end up at the front, win first).
+
+    # Default policy: every warning becomes an error. Forces a
+    # deliberate decision when something new starts warning, instead of
+    # silent rot.
+    "error",
+
+    # Matplotlib font configuration uses an older pyparsing API at
+    # import time (parseString, resetCache, enablePackrat, etc.). The
+    # message format is uniformly "'<camelCase>' deprecated - use
+    # '<snake_case>'". Match that whole family with one pattern. Out of
+    # our control; matplotlib upstream tracks it.
+    "ignore:'[A-Za-z]+' deprecated - use '[A-Za-z_]+':DeprecationWarning",
+
+    # pandas 2.x deprecation triggered by df.replace(dict) inside the
+    # current bootstrap_analysis(). Scheduled for fix in Phase 4 (perf
+    # cleanup, switch to .map() / np.searchsorted).
+    "ignore:.*Downcasting.*replace.*:FutureWarning",
+    "ignore:.*replace.*deprecated.*:DeprecationWarning",
+
+    # JAX may emit a DeprecationWarning about jax.config.update on some
+    # versions when we set the platform name to CPU. Supported but warns.
+    "ignore:.*jax.config.*:DeprecationWarning",
+]
+markers = [
+    "slow: marks tests that take more than a couple of seconds (deselect with -m 'not slow')",
+    "hb: marks tests that require jax/numpyro to be installed (skipped automatically when unavailable)",
+    "statistical: marks Monte Carlo / coverage-based correctness tests",
+    "golden: marks pinned-output regression tests",
+    "integration: marks tests that exercise more than one module together",
+    "e2e: marks browser-driven end-to-end tests",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["src", "tests/helpers"]
+omit = [
+    "tests/*",
+    "*/conftest.py",
+]
+
+[tool.coverage.report]
+exclude_also = [
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "pragma: no cover",
+]
+show_missing = true
+skip_covered = false
+precision = 1
+
+[tool.coverage.html]
+directory = "build/coverage-html"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+# Conservative initial rule set. We will tighten this as we refactor.
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+    "SIM",  # flake8-simplify
+    "RUF",  # ruff-specific
+]
+ignore = [
+    "E501",  # line too long: enforced by formatter, not lint
+    "B008",  # function call in default argument (common pattern in matplotlib)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011"]  # assert False is fine in tests
+"src/MaxDiff_Data_Analyzer_v2-1.py" = ["B", "SIM", "UP"]  # legacy file, refactor in Phase 3
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
