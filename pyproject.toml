@@ -103,12 +103,16 @@ filterwarnings = [
     # versions when we set the platform name to CPU. Supported but warns.
     "ignore:.*jax.config.*:DeprecationWarning",
 
-    # Matplotlib emits "Glyph N missing from current font" as a
-    # UserWarning when the default font lacks a code point that's
-    # neither in our labels nor anywhere we control. Most commonly
-    # triggered by automatic title-rendering paths under concurrent
-    # worker-thread invocation. Cosmetic; not a behavior bug.
-    "ignore:Glyph .* missing from current font:UserWarning",
+    # Matplotlib emits "Glyph N missing from current font" (older
+    # versions) or "Glyph N (\\uXXXX) missing from font(s) <name>"
+    # (newer, ~matplotlib 3.7+) as a UserWarning when the default
+    # font lacks a code point that's neither in our labels nor
+    # anywhere we control. Most commonly triggered by automatic
+    # title-rendering paths under concurrent worker-thread
+    # invocation. The pattern is broad enough to cover both wordings
+    # — what matters is "Glyph X missing", whatever the current font
+    # phrasing happens to be upstream. Cosmetic; not a behavior bug.
+    "ignore:Glyph .* missing from:UserWarning",
 ]
 markers = [
     "slow: marks tests that take more than a couple of seconds (deselect with -m 'not slow')",
