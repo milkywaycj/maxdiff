@@ -16,6 +16,7 @@
     a.btn { display: inline-block; padding: 10px 14px; border-radius: 10px; text-decoration: none; font-weight: 600; background: #3b5bdb; color: #fff; }
     a.btn.secondary { background: #495057; }
     a.btn.desktop { background: #0f766e; }
+    a.btn.pkg { background: #5f3dc4; }
     .note { background: #fff8db; border: 1px solid #ffe08a; border-radius: 10px; padding: 14px 16px; margin-top: 18px; }
     .note p { margin: 0; }
     .meta { margin-top: 18px; font-size: 0.92rem; color: #555; }
@@ -48,6 +49,12 @@
         <h2>Windows Desktop Tool</h2>
         <p>Download the desktop executable for a local Windows app. It defaults to count-based analysis and can enable HB when individual-level utilities are needed.</p>
         <a class="btn desktop" href="https://github.com/milkywaycj/maxdiff/releases/latest">Get desktop version</a>
+      </div>
+
+      <div class="card">
+        <h2>Python Package</h2>
+        <p>Use the analysis library directly in scripts and notebooks: <code>pip install maxdiff</code>. Count-based scoring, bootstrap CIs, and optional Hierarchical Bayes via <code>pip install maxdiff[hb]</code>.</p>
+        <a class="btn pkg" href="https://pypi.org/project/maxdiff/">View on PyPI</a>
       </div>
     </div>
 
