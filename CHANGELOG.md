@@ -10,6 +10,37 @@ between minor versions, but breaking changes are called out under
 
 ## [Unreleased]
 
+No changes to the analysis code or any of the three delivery modes.
+The entries below are CI / test-infrastructure hardening only. The
+release that ships them is also the first to be published to PyPI
+(via Trusted Publishing — see `docs/RELEASE.md`).
+
+### CI / Infrastructure
+- The CI matrix installs the Playwright Chromium browser
+  (`playwright install --with-deps chromium`) before running tests.
+  The workflow installed the `pytest-playwright` plugin but not the
+  browser, so the `tests/e2e/` fixtures errored at setup on every
+  matrix job.
+- `jax` and `numpyro` are pinned to known-good ranges
+  (`jax>=0.4,<0.5`, `numpyro>=0.13,<0.20`) in `requirements-hb.txt`.
+  The HB goldens reproduce within tolerance only against the JAX
+  release family they were generated on; an unpinned range would let
+  the goldens drift on every JAX upgrade. (Dev/test requirement only;
+  the `maxdiff[hb]` extra in `pyproject.toml` is unaffected.)
+- The e2e test server (`tests/e2e/conftest.py`) binds directly to
+  port 0 instead of probing for a free port and re-binding. The
+  probe-then-rebind pattern was a TOCTOU race that could surface as
+  intermittent `EADDRINUSE` failures.
+- CI runs pytest serially (dropped `-n auto`) and emits a per-job
+  JUnit XML uploaded as an artifact even on failure, so CI failures
+  are diagnosable without authenticated log access.
+- The matplotlib "glyph missing" `UserWarning` filter is broadened
+  to match both the historical wording (`missing from current font`)
+  and the current one (`missing from font(s) <name>`). The strict
+  `filterwarnings = error` policy had been elevating this cosmetic
+  warning to a test failure on runners that resolved a newer
+  matplotlib.
+
 ## [3.0.1] - 2026-05-19
 
 ### Fixed
