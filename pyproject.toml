@@ -9,7 +9,17 @@ readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10,<3.13"
 authors = [{ name = "Carl J" }]
-keywords = ["maxdiff", "best-worst", "survey", "choice-modeling"]
+keywords = [
+    "maxdiff",
+    "best-worst",
+    "best-worst-scaling",
+    "bws",
+    "survey",
+    "choice-modeling",
+    "discrete-choice",
+    "conjoint",
+    "market-research",
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
