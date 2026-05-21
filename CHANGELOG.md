@@ -10,10 +10,13 @@ between minor versions, but breaking changes are called out under
 
 ## [Unreleased]
 
+## [3.0.2] - 2026-05-21
+
 No changes to the analysis code or any of the three delivery modes.
-The entries below are CI / test-infrastructure hardening only. The
-release that ships them is also the first to be published to PyPI
-(via Trusted Publishing — see `docs/RELEASE.md`).
+The entries below are CI / test-infrastructure hardening only. This
+is the first release published to PyPI (via Trusted Publishing — see
+`docs/RELEASE.md`); `pip install maxdiff` resolves from PyPI as of
+this version.
 
 ### CI / Infrastructure
 - The CI matrix installs the Playwright Chromium browser
