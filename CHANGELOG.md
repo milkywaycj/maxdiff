@@ -10,6 +10,30 @@ between minor versions, but breaking changes are called out under
 
 ## [Unreleased]
 
+## [3.0.3] - 2026-05-21
+
+No changes to the analysis code or any of the three delivery modes.
+Documentation, packaging metadata, and CI maintenance only.
+
+### Documentation
+- The GitHub Pages landing page (`docs/index.html`) gained a
+  **Python Package** card (`pip install maxdiff`, links to PyPI) and
+  a **Further Reading** card linking the Quirk's article
+  "MaxDiff's max myths" on when MaxDiff is — and isn't — the right
+  tool for a study.
+
+### Packaging
+- Broadened the PyPI keyword list with `best-worst-scaling`, `bws`,
+  `discrete-choice`, `conjoint`, and `market-research` so PyPI search
+  surfaces the project under the academic "Best-Worst Scaling"
+  naming as well as the practitioner "MaxDiff" term. No rename — the
+  project name stays `maxdiff`.
+
+### CI / Infrastructure
+- Bumped `actions/checkout` to v5 and `actions/setup-python` to v6
+  across both workflows, off the deprecated Node 20 runtime ahead of
+  GitHub's 2026-06-02 forced migration to Node 24.
+
 ## [3.0.2] - 2026-05-21
 
 No changes to the analysis code or any of the three delivery modes.
